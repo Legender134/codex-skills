@@ -1,0 +1,4 @@
+interface:
+  display_name: "Repository-Aligned Development"
+  short_description: "Align changes with each repository's local conventions"
+  default_prompt: "Use $repository-aligned-development to inspect this repository, establish a local development contract, and keep the change aligned through verification."
