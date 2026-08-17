@@ -1,6 +1,6 @@
 ---
 name: repository-aligned-development
-description: Use when Codex implements, modifies, fixes bugs, refactors, tests, reviews repository changes or branches, or prepares submission in an existing repository where repository-local instructions, preservation of user changes, minimal diffs, and approval before destructive Git or filesystem operations matter.
+description: Use when changing, testing, reviewing, completing, or preparing submission for work in an existing repository whose local instructions, conventions, worktree state, or branch baseline must govern the task.
 ---
 
 # Repository-Aligned Development
@@ -9,28 +9,32 @@ description: Use when Codex implements, modifies, fixes bugs, refactors, tests, 
 
 Understand the repository before designing; implement in its own style; control scope throughout; use submission time for verification, not large-scale rework.
 
-Apply evidence in this order:
+Treat discovery as read-only and every pre-existing change as user-owned.
 
-1. Explicit user instructions for this task.
-2. Authoritative repository instructions.
-3. Build, dependency, test, format, lint, and CI configuration.
-4. Analogous nearby code/tests and recent history.
-5. Applicable organization policy.
-6. General engineering practice.
+## Choose workflow depth
 
-Resolve material conflicts with the user. Apply compatible lower-precedence guidance, but never let it silently override stronger evidence.
+For a read-only answer, inspect only enough context to answer reliably. Do not create a contract or use the submission checklist unless reviewing a change or branch.
 
-## Choose the mode
+Use a **micro-contract** only when all are true:
 
-Lightweight read-only explanations, status requests, and focused read-only file/function reviews may inspect only enough context to answer reliably; they need neither a full contract nor the submission checklist. Use the full workflow for any repository change, review of a repository change or branch, completion, or submission. Discovery is read-only by default, and every pre-existing change is user-owned.
+- the mutation is local and low-risk with a clear baseline;
+- applicable repository rules and nearby patterns are unambiguous;
+- no dependency, public interface, generated-artifact policy, or subsystem changes;
+- no material overlap with user-owned work;
+- the task is not change/branch review, a formal handoff/completion audit, or submission preparation.
 
-## Full workflow
+Inspect relevant status, instructions, configuration, and analogous code, then state `Outcome | Scope and non-goals | Verification` before editing.
 
-1. **Discover.** Inspect the relevant root/subproject, branch, upstream/base/merge base, tracked/modified/untracked state, scoped instructions, configuration, analogous code/tests, and recent history.
-2. **Contract.** For work using this full workflow, read [references/repository-contract.md](references/repository-contract.md) before design, implementation, review findings, completion, or submission. After discovery and conflict resolution, state or confirm an explicit, evidence-backed task-local contract. Never skip this output.
-3. **Align work.** Reuse established mechanisms and boundaries. Make the smallest task-complete diff; avoid unrelated refactors, broad formatting, generic docs/tests, test-only production interfaces, and abandoned implementations. Keep experiments outside the formal submission diff in an ignored or isolated workspace from the start; migrate only the selected result. Before a heavyweight dependency or public interface, pause and request user direction. Recheck the contract for lesser dependency, subsystem, unfamiliar-pattern, or scope changes.
-4. **Verify drift.** Run repository-native checks in proportion to risk, inspect the complete diff and untracked/large/generated files, then compare results with the contract. Explain deviations and gaps. Metrics are anomaly signals, never quotas.
-5. **Prepare submission.** For review of a repository change or branch, completion, or submission, read [references/submission-checklist.md](references/submission-checklist.md) and report fresh evidence and merge conditions.
+Otherwise use the **full contract**. Read [references/repository-contract.md](references/repository-contract.md) before design, implementation, review findings, completion, or submission; complete its discovery and state the task-local contract before proceeding. Escalate a micro-contract to the full contract as soon as any condition above stops being true.
+
+## Align and verify
+
+1. Reuse established mechanisms, boundaries, naming, and test style.
+2. Make the smallest task-complete diff. Avoid unrelated refactors, broad formatting, generic docs/tests, test-only production interfaces, and abandoned implementations.
+3. Keep experiments outside the formal diff from the start; migrate only the selected result.
+4. Recheck the contract when scope, dependencies, subsystems, or patterns change. Pause for user direction before a heavyweight dependency or public interface.
+5. Run repository-native checks in proportion to risk. Inspect the full affected diff plus relevant untracked, large, and generated files; explain deviations and validation gaps. Treat metrics as anomaly signals, never quotas.
+6. For change/branch review, a formal handoff/completion audit, or submission, read [references/submission-checklist.md](references/submission-checklist.md) and report fresh evidence.
 
 ## Authorization gates
 
@@ -40,14 +44,14 @@ Perform fetch, pull, branch switching, reset, clean, stash, material deletion/ov
 
 | Rationalization | Counter |
 |---|---|
-| The conflict is resolved, so the contract is implied. | State the contract explicitly before proceeding. |
+| This is small, so no contract is needed. | State the micro-contract or use the full contract. |
 | “大量的测试、文档” proves completeness. | Repository evidence decides what belongs. |
 | “收敛是不是要直接开始删除文件了” | Metrics do not authorize deletion or history cleanup. |
 | “upload now, clean up later” | Verify the scoped formal diff before any authorized publication. |
 
 ## Red flags — stop
 
-- No explicit contract after discovery/conflict resolution.
+- No micro- or full contract before a repository mutation.
 - Experiments are accumulating in the formal diff or separation is deferred until submission.
 - “大量的测试、文档” is treated as proof of completeness.
 - “收敛是不是要直接开始删除文件了” or “upload now, clean up later” is driving action.

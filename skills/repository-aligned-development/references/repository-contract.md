@@ -1,6 +1,6 @@
 # Repository Contract
 
-Read this before designing or implementing any repository mutation or reviewing a repository change or branch under the full workflow. Finish discovery and resolve material conflicts, then state a concise, task-local contract in the conversation. Do not add a contract document to the repository unless explicitly required.
+Read this before designing, implementing, or reviewing work that requires the full contract. Finish discovery and resolve material conflicts, then state a concise, task-local contract in the conversation. Do not add a contract document to the repository unless explicitly required.
 
 ## Evidence precedence
 
@@ -27,7 +27,7 @@ Inspect without changing state:
 
 Treat all pre-existing changes as user-owned. Do not fetch, pull, switch branches, reset, clean, or stash merely to improve discovery.
 
-## Contract template
+## Full contract template
 
 Include only relevant fields:
 

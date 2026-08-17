@@ -4,6 +4,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 import argparse
+import json
 import os
 import re
 import sys
@@ -71,9 +72,11 @@ def infer_default_roots(
     )
 
 
-def _require_directory(root: Path) -> Path:
+def _require_directory(root: Path, label: str) -> Path:
     if not root.is_dir():
-        raise ValueError(f"missing root: {root}")
+        raise ValueError(
+            f"missing {label} root: {root}; create it before retrying"
+        )
     return root.resolve(strict=True)
 
 
@@ -88,8 +91,14 @@ def discover_candidates(
             scope.destination
         ):
             continue
-        source_root = _require_directory(scope.source)
-        _require_directory(scope.destination)
+        source_root = _require_directory(
+            scope.source,
+            f"{scope.name} Windows source",
+        )
+        _require_directory(
+            scope.destination,
+            f"{scope.name} WSL destination",
+        )
 
         for child in sorted(scope.source.iterdir(), key=lambda item: item.name):
             if child.name == ".system":
@@ -213,7 +222,7 @@ def apply_actions(actions: Sequence[Action]) -> tuple[list[Action], bool]:
                         action.selector,
                         action.source,
                         action.destination,
-                        "UNCHANGED",
+                        "CREATED",
                         "link created",
                     )
                 )
@@ -227,9 +236,16 @@ def apply_actions(actions: Sequence[Action]) -> tuple[list[Action], bool]:
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Preview or create reviewed WSL links to Windows Codex Skills."
+        description="Preview or create reviewed WSL links to Windows Codex Skills.",
+        epilog="Exit codes: 0=safe result, 1=usage/environment error, "
+        "2=conflict or rejected candidate.",
     )
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="emit structured actions and issues",
+    )
     selection = parser.add_mutually_exclusive_group()
     selection.add_argument("--skill", action="append", default=[])
     selection.add_argument("--all", action="store_true")
@@ -250,6 +266,25 @@ def _parser() -> argparse.ArgumentParser:
         type=Path,
     )
     return parser
+
+
+def _is_wsl_environment() -> bool:
+    return bool(
+        os.environ.get("WSL_DISTRO_NAME")
+        or os.environ.get("WSL_INTEROP")
+    )
+
+
+def _uses_inferred_roots(args: argparse.Namespace) -> bool:
+    return any(
+        root is None
+        for root in (
+            args.windows_codex_root,
+            args.windows_agents_root,
+            args.wsl_codex_root,
+            args.wsl_agents_root,
+        )
+    )
 
 
 def _resolve_roots(
@@ -275,7 +310,32 @@ def _resolve_roots(
     )
 
 
-def _print_actions(actions: Sequence[Action]) -> None:
+def _print_results(
+    actions: Sequence[Action],
+    issues: Sequence[str],
+    json_output: bool,
+) -> None:
+    if json_output:
+        print(
+            json.dumps(
+                {
+                    "actions": [
+                        {
+                            "selector": action.selector,
+                            "source": str(action.source),
+                            "destination": str(action.destination),
+                            "status": action.status,
+                            "detail": action.detail,
+                        }
+                        for action in actions
+                    ],
+                    "issues": list(issues),
+                },
+                indent=2,
+            )
+        )
+        return
+
     for action in actions:
         print(
             action.status,
@@ -284,6 +344,8 @@ def _print_actions(actions: Sequence[Action]) -> None:
             action.detail,
             sep="\t",
         )
+    for issue in issues:
+        print(issue)
 
 
 def main(
@@ -295,6 +357,13 @@ def main(
     args = _parser().parse_args(argv)
     if args.apply and not (args.skill or args.all):
         print("--apply requires --skill or --all", file=sys.stderr)
+        return 1
+    if _uses_inferred_roots(args) and not _is_wsl_environment():
+        print(
+            "inferred-root mode must run inside WSL; provide all four "
+            "root options for an explicit non-WSL layout",
+            file=sys.stderr,
+        )
         return 1
 
     try:
@@ -320,9 +389,7 @@ def main(
         results = selected
         failed = any(action.status == "CONFLICT" for action in results)
 
-    _print_actions(results)
-    for issue in issues:
-        print(issue)
+    _print_results(results, issues, args.json)
     return 2 if failed or issues else 0
 
 

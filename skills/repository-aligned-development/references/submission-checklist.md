@@ -23,9 +23,9 @@ Report:
 - changed files and purpose;
 - fresh verification commands and results;
 - unverified behavior or validation gaps;
-- task and design links;
-- recommended commit grouping;
-- merge conditions, including repository and applicable organization requirements.
+- task and design links when they exist;
+- recommended commit grouping when a commit or submission is requested, or grouping materially improves reviewability;
+- known merge conditions when they apply, including repository and applicable organization requirements.
 
 Keep proposed submission content minimal and reviewable. Metrics do not authorize mechanical deletion.
 

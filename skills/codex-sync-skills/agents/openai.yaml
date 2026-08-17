@@ -1,4 +1,4 @@
 interface:
   display_name: "Sync Codex Skills"
   short_description: "Safely link Windows Skills into WSL"
-  default_prompt: "Use $codex-sync-skills to preview portable Windows Skills and safely link approved selections into WSL."
+  default_prompt: "Use $codex-sync-skills to inspect Windows and WSL Skill differences and safely link only approved portable Skills."

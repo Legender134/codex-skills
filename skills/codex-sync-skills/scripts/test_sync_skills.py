@@ -1,11 +1,14 @@
 from pathlib import Path
 from contextlib import redirect_stderr, redirect_stdout
 import io
+import json
 import os
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
+sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).parent))
 import sync_skills
 
@@ -105,7 +108,11 @@ class PortableDefaultsTests(unittest.TestCase):
 
         stdout = io.StringIO()
         stderr = io.StringIO()
-        with redirect_stdout(stdout), redirect_stderr(stderr):
+        with (
+            patch.dict(os.environ, {"WSL_DISTRO_NAME": "Ubuntu-Test"}, clear=True),
+            redirect_stdout(stdout),
+            redirect_stderr(stderr),
+        ):
             result = sync_skills.main(
                 [],
                 script_file=script,
@@ -115,6 +122,29 @@ class PortableDefaultsTests(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertEqual(stderr.getvalue(), "")
         self.assertIn("CREATE\tcodex/portable-skill\t", stdout.getvalue())
+
+    def test_inferred_roots_reject_non_wsl_execution(self):
+        script = self.make_script(".codex")
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            redirect_stdout(stdout),
+            redirect_stderr(stderr),
+        ):
+            result = sync_skills.main(
+                [],
+                script_file=script,
+                wsl_home=self.wsl_home,
+            )
+
+        self.assertEqual(result, 1)
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertIn(
+            "inferred-root mode must run inside WSL",
+            stderr.getvalue(),
+        )
 
     def test_public_files_do_not_pin_a_local_account_or_distribution(self):
         skill_root = Path(__file__).parent.parent
@@ -257,7 +287,10 @@ class ApplyTests(FilesystemCase):
         stdout = io.StringIO()
         stderr = io.StringIO()
         with redirect_stdout(stdout), redirect_stderr(stderr):
-            result = sync_skills.main([*self.root_arguments(), *arguments])
+            try:
+                result = sync_skills.main([*self.root_arguments(), *arguments])
+            except SystemExit as exc:
+                result = int(exc.code)
         return result, stdout.getvalue(), stderr.getvalue()
 
     def test_preview_does_not_create_missing_link(self):
@@ -275,7 +308,7 @@ class ApplyTests(FilesystemCase):
             "--apply", "--skill", "codex/first-skill"
         )
         self.assertEqual(result, 0)
-        self.assertIn("UNCHANGED\tcodex/first-skill\t", stdout)
+        self.assertIn("CREATED\tcodex/first-skill\t", stdout)
         self.assertEqual(stderr, "")
         self.assertEqual(
             (self.codex_destination / "first-skill").resolve(),
@@ -286,13 +319,39 @@ class ApplyTests(FilesystemCase):
     def test_repeated_apply_is_idempotent(self):
         source = make_skill(self.codex_source, "repeat-skill")
         arguments = ("--apply", "--skill", "codex/repeat-skill")
-        first_result, _, _ = self.call_main(*arguments)
+        first_result, first_stdout, _ = self.call_main(*arguments)
         second_result, stdout, _ = self.call_main(*arguments)
         destination = self.codex_destination / "repeat-skill"
         self.assertEqual((first_result, second_result), (0, 0))
         self.assertTrue(destination.is_symlink())
         self.assertEqual(destination.resolve(), source.resolve())
+        self.assertIn("CREATED\tcodex/repeat-skill\t", first_stdout)
+        self.assertIn("UNCHANGED\tcodex/repeat-skill\t", stdout)
         self.assertIn("link already targets source", stdout)
+
+    def test_json_preview_reports_actions_and_issues(self):
+        source = make_skill(self.codex_source, "json-skill")
+        destination = self.codex_destination / "json-skill"
+
+        result, stdout, stderr = self.call_main("--json")
+
+        self.assertEqual(result, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(
+            json.loads(stdout),
+            {
+                "actions": [
+                    {
+                        "selector": "codex/json-skill",
+                        "source": str(source),
+                        "destination": str(destination),
+                        "status": "CREATE",
+                        "detail": "destination is missing",
+                    }
+                ],
+                "issues": [],
+            },
+        )
 
     def test_conflicts_remain_byte_for_byte_untouched(self):
         make_skill(self.codex_source, "protected-skill")
@@ -351,7 +410,11 @@ class ApplyTests(FilesystemCase):
         self.agents_destination.rmdir()
         result, _, stderr = self.call_main()
         self.assertEqual(result, 1)
-        self.assertIn(f"missing root: {self.agents_destination}", stderr)
+        self.assertIn(
+            f"missing agents WSL destination root: {self.agents_destination}; "
+            "create it before retrying",
+            stderr,
+        )
         self.assertFalse(os.path.lexists(self.codex_destination / "known-skill"))
 
     def test_apply_processes_safe_items_but_returns_conflict(self):
