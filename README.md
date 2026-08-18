@@ -21,6 +21,12 @@ Clone this repository, then copy or link the selected directory from `skills/` i
 
 For `codex-sync-skills`, install the authoritative copy on Windows first. Run its utility inside the intended WSL distribution in preview mode, review portability, and explicitly approve any links before applying them.
 
+## Optional global repository rules
+
+[`agents/repository-aligned-development/AGENTS.md`](agents/repository-aligned-development/AGENTS.md) is a portable companion template for Codex's global instructions. Merge its contents into `~/.codex/AGENTS.md` when you want the repository-aligned development rules to apply across projects. Preserve any existing environment- or project-specific instructions; do not replace the whole file blindly.
+
+The similarly named `skills/repository-aligned-development/agents/openai.yaml` is different: it contains UI metadata and the default prompt for the Skill. It is installed with the Skill and is not a global agent configuration file.
+
 ## Verify
 
 Run the portable synchronization test suite from a Linux or WSL shell:

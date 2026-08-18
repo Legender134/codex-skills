@@ -32,13 +32,14 @@ Treat all pre-existing changes as user-owned. Do not fetch, pull, switch branche
 Include only relevant fields:
 
 - **Baseline:** selected repository/task base, confidence, and evidence.
-- **Authorized scope:** requested outcome, intended files, and non-goals.
-- **Module boundaries:** expected directories, packages, and interfaces.
+- **Requested outcome:** required behavior, evidence, and non-goals.
+- **Exploration boundaries:** protected user work, permitted directories, packages, interfaces, and authorization limits. These are guardrails, not an exact development file allowlist.
 - **Patterns:** analogous implementation and test conventions.
 - **Dependencies:** allowed placement and whether additions are justified.
 - **Errors/logging:** established handling, messages, and observability.
 - **Tests/commands:** required levels, style, and repository-native commands.
 - **Docs/generated artifacts:** expected locations and inclusion policy.
+- **Submission policy:** how the exact candidate paths will be selected from local development work.
 - **Delivery conditions:** verification, review, branch, and grouping expectations.
 - **Gated operations:** destructive, history-changing, or external actions requiring authorization.
 
@@ -50,9 +51,9 @@ Expected size, file counts, or test ratios may identify anomalies; they are neve
 - **New or empty repository:** use minimal general conventions and surface consequential choices; do not invent process scaffolding.
 - **Nested rules:** apply each instruction only within its scope; the most specific applicable repository rule governs within the repository-instruction level.
 - **Dirty worktree:** preserve unrelated tracked and untracked changes; isolate planned paths and stop if required edits materially overlap user work.
-- **Experiments:** keep them outside the formal submission diff in an ignored or isolated workspace from the start. If a result is selected, migrate only that result; do not defer separation until submission.
+- **Experiments:** exploration may create prototypes, alternatives, diagnostics, notes, or temporary files. Keep them identifiable and isolated when practical. At submission, select or migrate only the required result; preserve other local work unless cleanup is authorized.
 - **Material conflict:** resolve or escalate it, then state the contract before implementation. Conflict analysis is not a substitute for the contract.
 
 ## Recheck triggers
 
-Re-read relevant evidence and update the contract before an ordinary dependency change, entering another subsystem, using an unfamiliar pattern, or allowing scope drift. Before introducing a heavyweight dependency or public interface, pause, present the evidence and tradeoffs, and request user direction. Explain any material deviation before proceeding.
+Re-read relevant evidence and update the contract before crossing a repository boundary, changing an ordinary dependency, entering another governed subsystem, or using an unfamiliar pattern. Before introducing a heavyweight dependency or public interface, pause, present the evidence and tradeoffs, and request user direction. A larger intermediate diff or additional exploratory file alone does not require escalation.
