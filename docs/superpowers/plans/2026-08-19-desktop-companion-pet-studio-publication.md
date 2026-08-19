@@ -283,13 +283,7 @@ Copy only the eleven files listed in this task. Compare size/SHA-256 for every b
 
 - [ ] **Step 3: Apply only the paired path sanitization**
 
-In the copied operator guide and copied contract test, replace every instance of:
-
-```text
-C:\Users\admin\Documents\desktop-companion-worktrees\yinyue-v4-runtime\.venv\Scripts\python.exe
-```
-
-with:
+In the copied operator guide and copied contract test, replace every instance of the reviewed local Qt Python path with:
 
 ```text
 C:\path\to\PySide6\python.exe
@@ -373,7 +367,7 @@ git commit -m "docs: explain desktop companion pet studio setup"
 - [ ] **Step 1: Run repository and publication suites**
 
 ```powershell
-wsl.exe -e bash -lc "cd /mnt/c/Users/admin/Documents/codex-skills && python3 skills/codex-sync-skills/scripts/test_sync_skills.py"
+wsl.exe -e bash -lc "cd /mnt/c/path/to/codex-skills && python3 skills/codex-sync-skills/scripts/test_sync_skills.py"
 $source = (Resolve-Path $env:DESKTOP_COMPANION_TOOLCHAIN_SOURCE).Path
 $python = Join-Path $source '.venv\Scripts\python.exe'
 & $python -m pytest tests\test_desktop_companion_pet_studio_publication.py -q
