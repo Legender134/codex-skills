@@ -1,0 +1,474 @@
+{
+  "schemaVersion": 1,
+  "platform": "windows-x64",
+  "python": "3.12",
+  "pythonRuntime": {
+    "executable": "python.exe",
+    "versionRegex": "^Python 3\\.12\\.\\d+$",
+    "authenticode": {
+      "required": true,
+      "publishers": [
+        "CN=Python Software Foundation, O=Python Software Foundation, L=Beaverton, S=Oregon, C=US"
+      ]
+    }
+  },
+  "extractor": {
+    "version": "26.02",
+    "sourcePage": "https://www.7-zip.org/download.html",
+    "url": "https://github.com/ip7z/7zip/releases/download/26.02/7zr.exe",
+    "size": 602112,
+    "sha256": "56b8cc9f4971cef253644fafe54063ed7fdca551d4dee0f8c6baa81b855acd72",
+    "entrypoint": "7zr.exe",
+    "versionRegex": "^7-Zip \\(r\\) 26\\.02 \\(x86\\) : Igor Pavlov : Public domain : 2026-06-25$",
+    "authenticode": {
+      "required": false,
+      "publishers": []
+    }
+  },
+  "tools": {
+    "ffmpeg": {
+      "version": "9.0.1",
+      "sourcePage": "https://www.gyan.dev/ffmpeg/builds/",
+      "url": "https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-9.0.1-essentials_build.7z",
+      "size": 34372199,
+      "sha256": "49a73bdf0850092a252ac4641d922f3048d63ed113e196cc65ce1e4f7fb33e85",
+      "entrypoint": "bin/ffmpeg.exe",
+      "versionRegex": "^ffmpeg version 9\\.0\\.1(?:[-\\s]|$)",
+      "authenticode": {
+        "required": false,
+        "publishers": []
+      },
+      "probeEntrypoint": "bin/ffprobe.exe",
+      "installedFiles": {
+        "LICENSE": {
+          "size": 35147,
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+        },
+        "README.txt": {
+          "size": 41650,
+          "sha256": "1c8c50e4df1623673ec236bafe774f3c4ee41a1e6b0cde05e31b7d89b31efa06"
+        },
+        "bin/ffmpeg.exe": {
+          "size": 102856192,
+          "sha256": "72a489eccd008c2ec2c0a5856c5c75bc3d8bbfa90166c4566865c246445e6aa3"
+        },
+        "bin/ffplay.exe": {
+          "size": 104339968,
+          "sha256": "39a9ba4f207fe9eecfb094e632998c29e1da88a5d5d23d0b8b71a357a7c47eb5"
+        },
+        "bin/ffprobe.exe": {
+          "size": 102652416,
+          "sha256": "19202b23c0043f15ad1b7bce2344f406fd52bd6efd8f995ce02e7392a1cec52f"
+        },
+        "doc/bootstrap.min.css": {
+          "size": 109483,
+          "sha256": "3cedecf2b8064b4a56ba47bda04544e1b21d71c83a12e7b5709e7c7976ead70e"
+        },
+        "doc/community.html": {
+          "size": 13505,
+          "sha256": "ed1a149ca1f5129e31b71f7bf6547a690bbefed1f94b24d3b6cf15b9b5e7cac6"
+        },
+        "doc/default.css": {
+          "size": 2494,
+          "sha256": "504c4a0980e6ec809da02ce16b73151622a2fdfb4409098c7ce96c1cac9b3735"
+        },
+        "doc/developer.html": {
+          "size": 65540,
+          "sha256": "cc14a87cf4bb8d9e4509b4f9a7b2ade08015e8e93392dc72a0352a3daf0369ec"
+        },
+        "doc/drawvg-reference.html": {
+          "size": 147341,
+          "sha256": "e63e3aa79935d162c5e29e8feac866ae899ae0073f45595b3a029b42a897db90"
+        },
+        "doc/faq.html": {
+          "size": 65088,
+          "sha256": "12e4eaa685c874b975e9ad774aabd588871088a877f531ba2f7aa628b1670c45"
+        },
+        "doc/fate.html": {
+          "size": 18768,
+          "sha256": "603ae75dc972d486d4901c222ec881d6bb903058311dfcc9cda9f6471c50e3aa"
+        },
+        "doc/ffmpeg-all.html": {
+          "size": 3075750,
+          "sha256": "3769955d8402f86969575ab35d60e04c43d67b69c248f1cea3c00bbb48555c26"
+        },
+        "doc/ffmpeg-bitstream-filters.html": {
+          "size": 62913,
+          "sha256": "6783e37c2cafaec9337ac5188d72d1722b539f5bff9c08a1542ae0ec32bfb545"
+        },
+        "doc/ffmpeg-codecs.html": {
+          "size": 348541,
+          "sha256": "1e0c1482d7c0df446173268563f515dca6ed6dedf62b114a834d04ecb8aecfa9"
+        },
+        "doc/ffmpeg-devices.html": {
+          "size": 112837,
+          "sha256": "4cbeaf4948a0c267ea4de2f8bdaae49b169bd7d1a69202a4cf71fe79d9deb1a5"
+        },
+        "doc/ffmpeg-filters.html": {
+          "size": 1691550,
+          "sha256": "47a2f160aa4a516f4a86f42d3d3716a7c9ce057df238f9f4c0014730fd19e189"
+        },
+        "doc/ffmpeg-formats.html": {
+          "size": 332166,
+          "sha256": "e28f5c43faa8611c7ca67f4f0accf50e60e2b9b9f8d06781ff6c3ce3307870ad"
+        },
+        "doc/ffmpeg-protocols.html": {
+          "size": 122284,
+          "sha256": "df0bcefb9bdad2b4325513e6da4a8780e1043d2486bf59995e33cfe70309940c"
+        },
+        "doc/ffmpeg-resampler.html": {
+          "size": 13818,
+          "sha256": "ef33b5c00313e980fd8bef875e48ad49534f8d4da3acd62c2cb121cf2f767986"
+        },
+        "doc/ffmpeg-scaler.html": {
+          "size": 12981,
+          "sha256": "77a322683a61362bf302e67fe62560f6c5a4ccb7ef944f5fb7e2e797685436ff"
+        },
+        "doc/ffmpeg-utils.html": {
+          "size": 55775,
+          "sha256": "f0acb1ad146da71c65450b975f6e7e102eed03ee40eb9163e5d7b70df2e82146"
+        },
+        "doc/ffmpeg.html": {
+          "size": 217190,
+          "sha256": "55652233f15f468e2ecfd8af15571de2f7aedc676110882e38a003c5fd968b41"
+        },
+        "doc/ffplay-all.html": {
+          "size": 2379314,
+          "sha256": "4826c1079c36c410304723fc0fac7c179ca4c923e16c1f903b2e9d5304c14e67"
+        },
+        "doc/ffplay.html": {
+          "size": 42145,
+          "sha256": "c94ff755a36c9028aeeaf93f853df75450c23962a7bea43b6ae0177684195c37"
+        },
+        "doc/ffprobe-all.html": {
+          "size": 2395749,
+          "sha256": "ec58871e57bed8b39b0e2a9cd01772abd85cfe0ce68b30508812ed310f4179ec"
+        },
+        "doc/ffprobe.html": {
+          "size": 58506,
+          "sha256": "ca1dead6f3c6b93f6245ce6be3101ca2e176c69c768579a8d0d2383b57884763"
+        },
+        "doc/general.html": {
+          "size": 129043,
+          "sha256": "0da20102efcc3435badffbe91d57672d3e41e459dc7122d583def2778be970dd"
+        },
+        "doc/git-howto.html": {
+          "size": 27737,
+          "sha256": "e44ed6484fa73f819c59494c68be232728319250bd86c6e32a760ddca620e108"
+        },
+        "doc/libavcodec.html": {
+          "size": 3147,
+          "sha256": "faf8dd1ae157374e92a685970fa28f21e0df8a2dfb8c3ea99e58d6d956bee879"
+        },
+        "doc/libavdevice.html": {
+          "size": 3026,
+          "sha256": "cea441629a753d099d8b1032f0814a87cfa113d830f8fcdebd047738cb5481ac"
+        },
+        "doc/libavfilter.html": {
+          "size": 3092,
+          "sha256": "d02ec4ed1dddb7cb09f9c4e9f2bf38810b3050f6db5f839f398bd6561cab4322"
+        },
+        "doc/libavformat.html": {
+          "size": 3122,
+          "sha256": "49f9fdced269207bfd3a6bcb63738b3f1dcf2b3c7641eba509fd46f37c5cebcc"
+        },
+        "doc/libavutil.html": {
+          "size": 3621,
+          "sha256": "ba59342959874520f152b8df5eedde47295929a43e29646392e03c6fcdc2d8e9"
+        },
+        "doc/libswresample.html": {
+          "size": 4005,
+          "sha256": "f66d2d2e5f29ba56f47d2855d5cd8f276bf207241d024a5a06d0564b96d52bf5"
+        },
+        "doc/libswscale.html": {
+          "size": 3621,
+          "sha256": "41859c7b95dd3d1089e2189c2dc81b1da920557e66ec181a1f8fe04dcc829118"
+        },
+        "doc/mailing-list-faq.html": {
+          "size": 31209,
+          "sha256": "e6a26273f248a5ca7f4354fc8b19e4d0bceeefc3c7aa492db58072fdc9e6a944"
+        },
+        "doc/nut.html": {
+          "size": 11279,
+          "sha256": "3c42c776be67cf21b69dd5a2fe3dd6b08cc196eb9bbb2a9886366b2efa139ce6"
+        },
+        "doc/platform.html": {
+          "size": 22177,
+          "sha256": "8d6c71e3d28c52cddd7de85fcdbbdd87d22a02fa9905a6b3169ff9767033fd6d"
+        },
+        "doc/style.min.css": {
+          "size": 6523,
+          "sha256": "02496d7bdbd48d0f332dc94b62668906cbeabc3a8592253d5dfe2e5196522660"
+        },
+        "presets/libvpx-1080p.ffpreset": {
+          "size": 227,
+          "sha256": "cf0dca9d029e0aa29c242e5a7ecfb202a55ae41c1acdf5e2e59bf281a0136251"
+        },
+        "presets/libvpx-1080p50_60.ffpreset": {
+          "size": 227,
+          "sha256": "4d32bed9032caf8bf4ef8e4bcac427f482c6191396ef6b11f075a264da3a8def"
+        },
+        "presets/libvpx-360p.ffpreset": {
+          "size": 219,
+          "sha256": "c2ccd70a941c9b7003e364d7cc0296e8f3dea78cc3a87ccdcaae7c39a1a05b79"
+        },
+        "presets/libvpx-720p.ffpreset": {
+          "size": 227,
+          "sha256": "5bcac409c81ec0e11091801d5d1322b5ec6a9bb8617d7dda022acfea0d498d52"
+        },
+        "presets/libvpx-720p50_60.ffpreset": {
+          "size": 227,
+          "sha256": "b08a5ae448cb3cccd23faa6f42c8dbf61ead1a8381fce65636aa01a4a142cb8e"
+        }
+      }
+    },
+    "imagemagick": {
+      "version": "7.1.2-29",
+      "sourcePage": "https://imagemagick.org/download/",
+      "url": "https://github.com/ImageMagick/ImageMagick/releases/download/7.1.2-29/ImageMagick-7.1.2-29-portable-Q16-x64.7z",
+      "size": 11682401,
+      "sha256": "4715072c158c46bbdc3e6971817e92ed43fca7c93142cad142ee42c603baaac1",
+      "entrypoint": "magick.exe",
+      "versionRegex": "^Version: ImageMagick 7\\.1\\.2-29 Q16 x64\\b",
+      "authenticode": {
+        "required": true,
+        "publishers": [
+          "CN=ImageMagick Studio LLC, O=ImageMagick Studio LLC, L=Landenberg, S=Pennsylvania, C=US"
+        ]
+      },
+      "installedFiles": {
+        "ChangeLog.md": {
+          "size": 848112,
+          "sha256": "8404862cece6415bceb656a8e10c7a11a5cec4c7873f6ba58d0b9b430363facb"
+        },
+        "LICENSE.txt": {
+          "size": 12663,
+          "sha256": "5ffcbc771d4cc2827ca8c4505f6b5b61e0bc1d933e0f41a47eea16ed06db4f90"
+        },
+        "NOTICE.txt": {
+          "size": 426299,
+          "sha256": "5eb71c24311735ea0d96b233ad55f68890b9c9eec6ffee5ae20e9ae31fdd10e7"
+        },
+        "colors.xml": {
+          "size": 1411,
+          "sha256": "37b986dc355641021434859f77b5e1f30b21670c847706ee9b77418e0874dfa6"
+        },
+        "compare.exe": {
+          "size": 31153328,
+          "sha256": "fddcfc3d2d036a0673755500ab34a4ac2e513a07444fc0bd373aef0b6c2ea415"
+        },
+        "composite.exe": {
+          "size": 31153328,
+          "sha256": "f506248a81646818c5d2dacef8d327a81df4b907b09dca09650cea477927ab70"
+        },
+        "configure.xml": {
+          "size": 1169,
+          "sha256": "390358d3ea7260c34a26de51e9bbf3ad0b4f747ec7ba97e378fa863b29486b1c"
+        },
+        "conjure.exe": {
+          "size": 31153328,
+          "sha256": "d69700647e1693fc2ea41cecf2d9d50094cc8a290819d674bac6b34d9eacb0dc"
+        },
+        "delegates.xml": {
+          "size": 10004,
+          "sha256": "d6447b0e9c748690b63717d7942987f854b021761613fcb212f6148c8a63d665"
+        },
+        "english.xml": {
+          "size": 54544,
+          "sha256": "fb5531f96084f4f8feef250d17ea40e6fbb36d21837fc070ca87e721e4451c5e"
+        },
+        "identify.exe": {
+          "size": 31153328,
+          "sha256": "4fb49fae8f043aa86d62eeb09b7c83534de9ddb064af5f4a895ad303acf29362"
+        },
+        "locale.xml": {
+          "size": 2509,
+          "sha256": "9a22865c9ba728a88aeea2bd64d238e39886ec1a87d791353e9266a3198ab296"
+        },
+        "log.xml": {
+          "size": 1701,
+          "sha256": "c246daab249adda19a7754fe8769e6ef08a7d0b5c8ce4742a036593a6e47ea17"
+        },
+        "magick.exe": {
+          "size": 31153328,
+          "sha256": "7e93f2c502c888569e2cf27e049e39d204a8bbd36a958419af7fce5450776f41"
+        },
+        "mime.xml": {
+          "size": 136869,
+          "sha256": "e7ca58e71b1e30cf2d18453e3fce2e266e3c85a090253f6d5a1d2ed2011b1c81"
+        },
+        "mogrify.exe": {
+          "size": 31153328,
+          "sha256": "5457ae486426fb2a10c91ef0547483c3a248f25c007f8c968af56f0b68f86646"
+        },
+        "montage.exe": {
+          "size": 31153328,
+          "sha256": "b009cbbaf5b623824aafa7b0b6ba72ad72d606dc65d4d40cec74b24fbd5ba064"
+        },
+        "policy.xml": {
+          "size": 8836,
+          "sha256": "caa8dab971a9eafc2a592d5803595827dec0b99d8bf34c1e9b1c993fe69d7048"
+        },
+        "sRGB.icc": {
+          "size": 60960,
+          "sha256": "83174717332326ddc198d9df188a4daec27b8979ba152cebbfc470c793d0bb11"
+        },
+        "stream.exe": {
+          "size": 31153328,
+          "sha256": "ec7dae3b2af6a183c2cb307f29293bd5e10e2131ea07244b443cd5ff03ddfbdc"
+        },
+        "thresholds.xml": {
+          "size": 11788,
+          "sha256": "068487187c65f8ba9963ee0d73b31261cde9cd255bf879edcb093241e1c6a36b"
+        },
+        "type-ghostscript.xml": {
+          "size": 9470,
+          "sha256": "8cdd0a89929342e438d90b4b95b4417fc90737858cefc9161f454e0f7e1435b4"
+        },
+        "type.xml": {
+          "size": 691,
+          "sha256": "ba4160241fb0fff29563b40430b24f5d993cd5f1e423f85ee99c17749901c8ad"
+        }
+      }
+    },
+    "libwebp": {
+      "version": "1.6.0",
+      "sourcePage": "https://developers.google.com/speed/webp/download",
+      "url": "https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.6.0-windows-x64.zip",
+      "size": 4106264,
+      "sha256": "48886f506b21f62e4661f0f4cbfca19800897c385128e8902542d29a950c93f1",
+      "entrypoint": "bin/cwebp.exe",
+      "versionRegex": "^1\\.6\\.0(?:\\s|$)",
+      "authenticode": {
+        "required": false,
+        "publishers": []
+      },
+      "installedFiles": {
+        "README.md": {
+          "size": 2182,
+          "sha256": "e1aff17c116e79c17f864c3b17db44505c9fbef624f2b102b6b9e057e864ad07"
+        },
+        "bin/anim_diff.exe": {
+          "size": 828928,
+          "sha256": "a98e023444c9c9ad5c64c839e8709c216ab86dd8f900b5e6ebda240365bc82de"
+        },
+        "bin/anim_dump.exe": {
+          "size": 936448,
+          "sha256": "3f1cbb7739fad01b2c5e47b2c21050560177129a88f7619942d0168965969d81"
+        },
+        "bin/cwebp.exe": {
+          "size": 753664,
+          "sha256": "6a2f5cb5dce71366353ab1d9caf9c636e039f25703acfce1c148eed346f2f72a"
+        },
+        "bin/dwebp.exe": {
+          "size": 512512,
+          "sha256": "17c1488bf84b7834e9aa908bb40afd0be2e55d57567d210e96336c56bb6ae993"
+        },
+        "bin/freeglut.dll": {
+          "size": 229376,
+          "sha256": "cf62555f14d64fac1d650e1a24c86465b70ca410c3d6942fce2e6f25672490c7"
+        },
+        "bin/get_disto.exe": {
+          "size": 749056,
+          "sha256": "5b75a6312532038d124a263f56d35502d7193a3e7b95b7be873f8156a8de4953"
+        },
+        "bin/gif2webp.exe": {
+          "size": 847872,
+          "sha256": "cc0044eb724703fc87e8292fca9a4ae6b581e2a07389ee2cf631f312705dfae2"
+        },
+        "bin/img2webp.exe": {
+          "size": 775680,
+          "sha256": "b26bfabad2607fd307283cd7c6cf6115251dc44e9462492f6b401a69c109e252"
+        },
+        "bin/vwebp.exe": {
+          "size": 494080,
+          "sha256": "12954f6b37e74eacc1582691ea4e6ba98a122992c5491ecab0757c3a7cb8b15c"
+        },
+        "bin/webp_quality.exe": {
+          "size": 346624,
+          "sha256": "b30d7a502b403cf7d0ab61b3319222ca63c84e882e80eab54a06685830eef76c"
+        },
+        "bin/webpinfo.exe": {
+          "size": 324096,
+          "sha256": "4d157aed90e730305500ef5ba67a2484d7001fb901af42137f581a4fb0164ed3"
+        },
+        "bin/webpmux.exe": {
+          "size": 240640,
+          "sha256": "98e33ac84759f31a9f21005889f0e01c3ddd51a57452a24426a2260a91945061"
+        },
+        "doc/api.md": {
+          "size": 13922,
+          "sha256": "12015b17453b7554b841ec6a1ad0c0aa9428f9a82019371b7095516276044911"
+        },
+        "doc/tools.md": {
+          "size": 19149,
+          "sha256": "7081656f9fa1b0428cda1990a7026e888605ef86aebc518750be75fe8c31c5c8"
+        },
+        "include/webp/decode.h": {
+          "size": 24857,
+          "sha256": "a5a2c5b73dc5badb8a831e5bda4162726b676f8a7e0279c2d4083df9ffc4b750"
+        },
+        "include/webp/demux.h": {
+          "size": 16388,
+          "sha256": "597f887a6203c79da83342aad7fe5de849c37078e393f56c7e2ac7fafced7d08"
+        },
+        "include/webp/encode.h": {
+          "size": 29061,
+          "sha256": "a7b82bad28dc065ce73cf667de00c813caa4ea127dc7e216db84a48ffc417c0a"
+        },
+        "include/webp/mux.h": {
+          "size": 26557,
+          "sha256": "7ca8805fd7c60f241ea8b915492f53592c30a55a7f8146a5b31a268a4b876a69"
+        },
+        "include/webp/mux_types.h": {
+          "size": 3360,
+          "sha256": "f9e2bb4bb702bef067e360c8358aed40e2bec5d846e4e94f30dcdef0775bb4bf"
+        },
+        "include/webp/types.h": {
+          "size": 3270,
+          "sha256": "79f129f24c11c59c5fe4ddee4f4787221d488ba9cdbdda9b2c7b9cb4f6ce6e71"
+        },
+        "lib/libwebp.lib": {
+          "size": 1793568,
+          "sha256": "f7ccc6f78850640593ad071bb24415b4addde3f70cf611cda1fe17510b7a65fd"
+        },
+        "lib/libwebpdemux.lib": {
+          "size": 41852,
+          "sha256": "8f041b85e097ec1e0bab68b8c941f30f4542c4bdf9d4521c5c646dfbea3ab278"
+        },
+        "lib/libwebpmux.lib": {
+          "size": 123970,
+          "sha256": "c37a10091d31501d044ae4250158220bca52d392bbe5afcf515ee2e209963733"
+        },
+        "test.webp": {
+          "size": 4880,
+          "sha256": "1bf9449d529b491c6eb22ec84d42217e43cf9af0ffe391fa7a30b29b037f098a"
+        },
+        "test_ref.ppm": {
+          "size": 49167,
+          "sha256": "bf84f754ae60e8924b2a1416d9fd8f95e35d89742a691103ee1d7e013c21a723"
+        }
+      }
+    }
+  },
+  "models": {
+    "isnet-anime": {
+      "version": "rembg-v0.0.0",
+      "sourcePage": "https://github.com/danielgatis/rembg/releases/tag/v0.0.0",
+      "url": "https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-anime.onnx",
+      "size": 176069933,
+      "sha256": "f15622d853e8260172812b657053460e20806f04b9e05147d49af7bed31a6e99",
+      "entrypoint": "models/isnet-anime.onnx",
+      "modelName": "isnet-anime"
+    },
+    "u2net_human_seg": {
+      "version": "rembg-v0.0.0",
+      "sourcePage": "https://github.com/danielgatis/rembg/releases/tag/v0.0.0",
+      "url": "https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net_human_seg.onnx",
+      "size": 175997641,
+      "sha256": "01eb6a29a5c4d8edb30b56adad9bb3a2a0535338e480724a213e0acfd2d1c73c",
+      "entrypoint": "models/u2net_human_seg.onnx",
+      "modelName": "u2net_human_seg"
+    }
+  }
+}
