@@ -91,3 +91,21 @@ def test_toolchain_overlay_is_complete_and_source_only() -> None:
     )
     assert GENERIC_QT_PYTHON in guide_text
     assert GENERIC_QT_PYTHON in contract_text
+
+
+def test_root_catalog_documents_pet_studio_installation() -> None:
+    readme_text = (ROOT / "README.md").read_text(encoding="utf-8")
+
+    assert "`crafting-desktop-companion-pets`" in readme_text
+    assert (
+        "[detailed project overlay README](templates/desktop-companion-pet-studio/README.md)"
+        in readme_text
+    )
+    assert (
+        "Use `skill-installer` to install `skills/crafting-desktop-companion-pets` "
+        "from `Legender134/codex-skills`."
+        in readme_text
+    )
+    assert "Install the Skill" in readme_text
+    assert "Copy the project overlay" in readme_text
+    assert "not a Skill" in readme_text
