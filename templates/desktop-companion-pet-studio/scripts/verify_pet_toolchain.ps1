@@ -435,11 +435,11 @@ function Assert-PythonEnvironment {
     )
 
     $environment = @{ PYTHONDONTWRITEBYTECODE = '1' }
-    $actualVersion = Assert-VersionOutput -Path $PythonPath -ArgumentList @('-I', '--version') -VersionRegex $VersionRegex -Context 'Python runtime' -Environment $environment -CleanEnvironment
+    $actualVersion = Assert-VersionOutput -Path $PythonPath -ArgumentList @('-I', '-B', '--version') -VersionRegex $VersionRegex -Context 'Python runtime' -Environment $environment -CleanEnvironment
     if ($actualVersion -cne $RuntimeVersion) {
         throw 'Candidate Python runtime version does not match installed manifest'
     }
-    $freeze = Invoke-CheckedProcess -FilePath $PythonPath -ArgumentList @('-I', '-m', 'pip', '--isolated', 'freeze', '--all') -TimeoutSeconds 120 -Environment $environment -CleanEnvironment
+    $freeze = Invoke-CheckedProcess -FilePath $PythonPath -ArgumentList @('-I', '-B', '-m', 'pip', '--isolated', 'freeze', '--all') -TimeoutSeconds 120 -Environment $environment -CleanEnvironment
     $actual = @($freeze.StdOut -split "`r?`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
     $expected = @($ExpectedFreeze | ForEach-Object { [string]$_ })
     if ($actual.Count -ne $expected.Count) {

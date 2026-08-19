@@ -3720,6 +3720,31 @@ def test_verifier_starts_python_stages_isolated_with_clean_environments(
     assert not attacker_marker.exists()
     assert not outside_cache.exists()
 
+    flag_code = (
+        "import json, sys; "
+        "print(json.dumps({'ignore_environment': sys.flags.ignore_environment, "
+        "'dont_write_bytecode': sys.dont_write_bytecode}))"
+    )
+    flag_probe = run_common_script(
+        "$ErrorActionPreference = 'Stop'; "
+        f". {powershell_literal(VERIFY_SCRIPT)} -QtPython {powershell_literal(Path(sys.executable))}; "
+        "$details = Invoke-CheckedProcess "
+        f"-FilePath {powershell_literal(Path(sys.executable))} "
+        f"-ArgumentList @('-I', '-B', '-c', {powershell_literal(flag_code)}) "
+        "-TimeoutSeconds 60 -Environment @{ PYTHONDONTWRITEBYTECODE = '1' } -CleanEnvironment; "
+        "$details.StdOut",
+        environment={
+            "PYTHONPATH": str(attacker_site),
+            "PYTHONDONTWRITEBYTECODE": "0",
+        },
+    )
+
+    assert flag_probe.returncode == 0, flag_probe.stdout + flag_probe.stderr
+    assert json.loads(flag_probe.stdout) == {
+        "ignore_environment": 1,
+        "dont_write_bytecode": True,
+    }
+
     freeze_probe = run_common_script(
         "$ErrorActionPreference = 'Stop'; "
         f". {powershell_literal(VERIFY_SCRIPT)} -QtPython {powershell_literal(Path(sys.executable))}; "
@@ -3733,8 +3758,8 @@ def test_verifier_starts_python_stages_isolated_with_clean_environments(
         "if ($FilePath -cne $expectedPython -or -not [System.IO.Path]::IsPathRooted($FilePath)) { throw 'verifier did not use the absolute supplied Python' }; "
         "if (-not $CleanEnvironment) { throw 'verifier Python stage was not clean' }; "
         "if ($ArgumentList -contains 'freeze') { "
-        "$expectedArguments = @('-I', '-m', 'pip', '--isolated', 'freeze', '--all'); "
-        "if (($ArgumentList -join [char]0) -cne ($expectedArguments -join [char]0)) { throw 'candidate freeze was not Python/pip isolated' }; "
+        "$expectedArguments = @('-I', '-B', '-m', 'pip', '--isolated', 'freeze', '--all'); "
+        "if (($ArgumentList -join [char]0) -cne ($expectedArguments -join [char]0)) { throw 'candidate freeze was not Python/pip isolated and bytecode-free' }; "
         "if ($TimeoutSeconds -ne 120) { throw 'candidate freeze timeout changed' }; "
         "if ($Environment.PYTHONDONTWRITEBYTECODE -cne '1' -or $Environment.Count -ne 1) { throw 'candidate freeze safe environment changed' }; "
         "$script:freezeSeen = $true; "
@@ -3745,8 +3770,8 @@ def test_verifier_starts_python_stages_isolated_with_clean_environments(
         "if ($TimeoutSeconds -ne 60 -or $Environment.Count -ne 0) { throw 'Qt Python process contract changed' }; "
         "$script:qtSeen = $true; "
         "return [pscustomobject]@{ ExitCode = 0; StdOut = '{\"ok\":true}'; StdErr = '' } }; "
-        "$expectedArguments = @('-I', '--version'); "
-        "if (($ArgumentList -join [char]0) -cne ($expectedArguments -join [char]0)) { throw 'candidate version probe was not Python isolated' }; "
+        "$expectedArguments = @('-I', '-B', '--version'); "
+        "if (($ArgumentList -join [char]0) -cne ($expectedArguments -join [char]0)) { throw 'candidate version probe was not Python isolated and bytecode-free' }; "
         "if ($TimeoutSeconds -ne 60 -or $Environment.PYTHONDONTWRITEBYTECODE -cne '1' -or $Environment.Count -ne 1) { throw 'candidate version process contract changed' }; "
         "return [pscustomobject]@{ ExitCode = 0; StdOut = 'Python 3.12.10'; StdErr = '' } "
         "}; "
