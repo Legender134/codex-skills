@@ -3662,7 +3662,7 @@ def test_numba_cache_path_budget_accepts_259_and_rejects_260_characters() -> Non
     assert "Assert-NumbaCachePathBudget -ToolRoot $toolRootFull" in verifier_text
 
 
-def test_verifier_starts_media_python_isolated_with_private_numba_cache(
+def test_verifier_starts_python_stages_isolated_with_clean_environments(
     tmp_path: Path,
 ) -> None:
     attacker_site = tmp_path / "attacker-site"
@@ -3719,6 +3719,52 @@ def test_verifier_starts_media_python_isolated_with_private_numba_cache(
     assert result.stdout.strip() == "isolated-media-python-passed"
     assert not attacker_marker.exists()
     assert not outside_cache.exists()
+
+    freeze_probe = run_common_script(
+        "$ErrorActionPreference = 'Stop'; "
+        f". {powershell_literal(VERIFY_SCRIPT)} -QtPython {powershell_literal(Path(sys.executable))}; "
+        f"$expectedPython = {powershell_literal(Path(sys.executable))}; "
+        f"$expectedQtScript = {powershell_literal(tmp_path / 'verify-qt.py')}; "
+        f"$expectedWebp = {powershell_literal(tmp_path / 'preview.webp')}; "
+        "$script:freezeSeen = $false; "
+        "$script:qtSeen = $false; "
+        "function Invoke-CheckedProcess { "
+        "param($FilePath, [string[]]$ArgumentList, [int]$TimeoutSeconds, [hashtable]$Environment = @{}, [switch]$CleanEnvironment); "
+        "if ($FilePath -cne $expectedPython -or -not [System.IO.Path]::IsPathRooted($FilePath)) { throw 'verifier did not use the absolute supplied Python' }; "
+        "if (-not $CleanEnvironment) { throw 'verifier Python stage was not clean' }; "
+        "if ($ArgumentList -contains 'freeze') { "
+        "$expectedArguments = @('-I', '-m', 'pip', '--isolated', 'freeze', '--all'); "
+        "if (($ArgumentList -join [char]0) -cne ($expectedArguments -join [char]0)) { throw 'candidate freeze was not Python/pip isolated' }; "
+        "if ($TimeoutSeconds -ne 120) { throw 'candidate freeze timeout changed' }; "
+        "if ($Environment.PYTHONDONTWRITEBYTECODE -cne '1' -or $Environment.Count -ne 1) { throw 'candidate freeze safe environment changed' }; "
+        "$script:freezeSeen = $true; "
+        "return [pscustomobject]@{ ExitCode = 0; StdOut = 'example==1'; StdErr = '' } }; "
+        "if ($ArgumentList -contains $expectedQtScript) { "
+        "$expectedArguments = @('-I', '-B', $expectedQtScript, $expectedWebp); "
+        "if (($ArgumentList -join [char]0) -cne ($expectedArguments -join [char]0)) { throw 'Qt Python was not isolated and bytecode-free' }; "
+        "if ($TimeoutSeconds -ne 60 -or $Environment.Count -ne 0) { throw 'Qt Python process contract changed' }; "
+        "$script:qtSeen = $true; "
+        "return [pscustomobject]@{ ExitCode = 0; StdOut = '{\"ok\":true}'; StdErr = '' } }; "
+        "$expectedArguments = @('-I', '--version'); "
+        "if (($ArgumentList -join [char]0) -cne ($expectedArguments -join [char]0)) { throw 'candidate version probe was not Python isolated' }; "
+        "if ($TimeoutSeconds -ne 60 -or $Environment.PYTHONDONTWRITEBYTECODE -cne '1' -or $Environment.Count -ne 1) { throw 'candidate version process contract changed' }; "
+        "return [pscustomobject]@{ ExitCode = 0; StdOut = 'Python 3.12.10'; StdErr = '' } "
+        "}; "
+        "Assert-PythonEnvironment -PythonPath $expectedPython -ExpectedFreeze @('example==1') "
+        "-RuntimeVersion 'Python 3.12.10' -VersionRegex '^Python 3\\.12\\.\\d+$'; "
+        "if (-not $script:freezeSeen) { throw 'candidate freeze probe was skipped' }; "
+        "$qt = Invoke-QtVerificationProcess -PythonPath $expectedPython -QtScript $expectedQtScript -WebpPath $expectedWebp; "
+        "if (-not $script:qtSeen -or $qt.StdOut -cne '{\"ok\":true}') { throw 'Qt Python result contract changed' }; "
+        "'isolated-verifier-python-stages-passed'",
+        environment={
+            "PYTHONPATH": str(attacker_site),
+            "PIP_TARGET": str(tmp_path / "outside-pip-target"),
+            "PIP_CONFIG_FILE": str(tmp_path / "attacker-pip.ini"),
+        },
+    )
+
+    assert freeze_probe.returncode == 0, freeze_probe.stdout + freeze_probe.stderr
+    assert freeze_probe.stdout.strip() == "isolated-verifier-python-stages-passed"
 
 
 @pytest.mark.parametrize(
@@ -4751,6 +4797,12 @@ trust_level = "trusted"""
     assert "$finalSafeDirectories.Count -ne $allowedSafeDirectories.Count" in git_policy
     assert 'throw "Final safe.directory values must exactly match the two allowed paths' in git_policy
     assert "case-insensitive, no duplicates" in git_policy
+    assert "它不会自动撤销任何 safe.directory 值" in git_policy
+    assert "重新读取全部 safe.directory 值" in git_policy
+    assert "与本次运行前打印的 values 对照" in git_policy
+    assert "只删除这些 exact value" in git_policy
+    assert "未知值绝不会由该块自动删除" in git_policy
+    assert "失败时只撤销本次新增的 exact value" not in git_policy
     unexpected_index = git_policy.index("$unexpectedSafeDirectories = @(")
     throw_index = git_policy.index('throw "Unexpected safe.directory value(s):')
     foreach_index = git_policy.index("foreach ($safeDirectory in $allowedSafeDirectories)")

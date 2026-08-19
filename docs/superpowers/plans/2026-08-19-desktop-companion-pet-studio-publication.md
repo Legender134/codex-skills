@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Target baseline is `main@9d2782ca05cb0e6dee6ec6b4ab807f94411c243f`; work only on `feature/desktop-companion-pet-studio`.
-- Toolchain source is reviewed commit `9405019e74ffee1cfa563032b2ed56b1d6ded903`; do not silently copy a different checkout.
+- Toolchain source is reviewed commit `42b380590c534662c5aeb4e85ad572cb2e42364c`; do not silently copy a different checkout.
 - Do not add binaries, archives, wheels, ONNX weights, caches, virtual environments, QA transcripts, browser/account state, credentials, real trust entries, usernames, or absolute machine paths.
 - Preserve existing Skills and agent guidance; only root catalog links may change outside the new Skill/template/docs/tests paths.
 - Keep Skill behavior unchanged during publication. Any wording change upgrades the work to Skill authoring and requires a new RED/GREEN behavioral cycle before continuing.
@@ -232,7 +232,7 @@ git commit -m "feat: add desktop companion project profile"
 - Create: `templates/desktop-companion-pet-studio/tools/verify_qt_webp.py`
 
 **Interfaces:**
-- Consumes: exact files from DesktopCompanion commit `9405019`, plus the paired public path replacement.
+- Consumes: exact files from DesktopCompanion commit `42b380590c534662c5aeb4e85ad572cb2e42364c`, plus the paired public path replacement.
 - Produces: a self-contained overlay whose scripts resolve lock, requirements, helpers, and tests relative to the template root.
 
 - [ ] **Step 1: Add the failing template inventory and exclusion tests**
@@ -274,7 +274,7 @@ Set `DESKTOP_COMPANION_TOOLCHAIN_SOURCE` to the reviewed checkout and assert its
 
 ```powershell
 $source = (Resolve-Path $env:DESKTOP_COMPANION_TOOLCHAIN_SOURCE).Path
-if ((git -C $source rev-parse HEAD) -cne '9405019e74ffee1cfa563032b2ed56b1d6ded903') {
+if ((git -C $source rev-parse HEAD) -cne '42b380590c534662c5aeb4e85ad572cb2e42364c') {
   throw 'DesktopCompanion toolchain source HEAD changed'
 }
 ```

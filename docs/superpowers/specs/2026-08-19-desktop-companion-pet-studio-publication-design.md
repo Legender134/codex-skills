@@ -12,7 +12,7 @@ This keeps the Skill independently installable while preserving the toolchain's 
 ## Baselines and provenance
 
 - Target repository baseline: `Legender134/codex-skills` `main@9d2782ca05cb0e6dee6ec6b4ab807f94411c243f`.
-- Media-toolchain source: reviewed DesktopCompanion branch commit `9405019e74ffee1cfa563032b2ed56b1d6ded903`.
+- Media-toolchain source: reviewed DesktopCompanion branch commit `42b380590c534662c5aeb4e85ad572cb2e42364c`.
 - Skill source: the installed `crafting-desktop-companion-pets` Skill containing `SKILL.md`, `agents/openai.yaml`, and four routed references.
 - Existing target-repository content under `skills/codex-sync-skills`, `skills/repository-aligned-development`, and `agents/repository-aligned-development` remains unchanged except for root documentation links.
 

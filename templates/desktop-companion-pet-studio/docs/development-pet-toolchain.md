@@ -190,7 +190,7 @@ git -C C:/path/to/desktop-companion status --short --branch
 git -C C:/path/to/desktop-companion-worktrees/yinyue-v4-runtime status --short --branch
 ~~~
 
-这个条件块只比较大小写不敏感的 exact value；结果中必须有这两个值且没有 *。失败时只撤销本次新增的 exact value，不覆盖用户原有的其他设置。不要改变仓库所有者或 ACL。这里出现的本机路径是操作员信任示例，不是凭据，也不是写入 tracked config 的机器 trust 值。
+这个条件块只比较大小写不敏感的 exact value；结果中必须有这两个值且没有 *。如果块在执行 `--add` 后失败，它不会自动撤销任何 safe.directory 值。先重新读取全部 safe.directory 值，与本次运行前打印的 values 对照，识别仅由本次运行新增的 exact value；逐项审查确认后，只删除这些 exact value。未知值绝不会由该块自动删除，也不得因本次失败而删除。不要改变仓库所有者或 ACL。这里出现的本机路径是操作员信任示例，不是凭据，也不是写入 tracked config 的机器 trust 值。
 
 ## 9. Failure messages and rollback procedure / 回滚
 

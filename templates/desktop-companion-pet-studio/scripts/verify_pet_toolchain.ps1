@@ -435,11 +435,11 @@ function Assert-PythonEnvironment {
     )
 
     $environment = @{ PYTHONDONTWRITEBYTECODE = '1' }
-    $actualVersion = Assert-VersionOutput -Path $PythonPath -ArgumentList @('--version') -VersionRegex $VersionRegex -Context 'Python runtime' -Environment $environment -CleanEnvironment
+    $actualVersion = Assert-VersionOutput -Path $PythonPath -ArgumentList @('-I', '--version') -VersionRegex $VersionRegex -Context 'Python runtime' -Environment $environment -CleanEnvironment
     if ($actualVersion -cne $RuntimeVersion) {
         throw 'Candidate Python runtime version does not match installed manifest'
     }
-    $freeze = Invoke-CheckedProcess -FilePath $PythonPath -ArgumentList @('-m', 'pip', 'freeze', '--all') -TimeoutSeconds 120 -Environment $environment
+    $freeze = Invoke-CheckedProcess -FilePath $PythonPath -ArgumentList @('-I', '-m', 'pip', '--isolated', 'freeze', '--all') -TimeoutSeconds 120 -Environment $environment -CleanEnvironment
     $actual = @($freeze.StdOut -split "`r?`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
     $expected = @($ExpectedFreeze | ForEach-Object { [string]$_ })
     if ($actual.Count -ne $expected.Count) {
@@ -1253,6 +1253,18 @@ function Invoke-MediaVerificationProcess {
 }
 
 
+function Invoke-QtVerificationProcess {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$PythonPath,
+        [Parameter(Mandatory)][string]$QtScript,
+        [Parameter(Mandatory)][string]$WebpPath
+    )
+
+    return Invoke-CheckedProcess -FilePath $PythonPath -ArgumentList @('-I', '-B', $QtScript, $WebpPath) -TimeoutSeconds 60 -CleanEnvironment
+}
+
+
 function Invoke-PetToolchainVerification {
     [CmdletBinding()]
     param()
@@ -1310,7 +1322,7 @@ function Invoke-PetToolchainVerification {
         if ([Int64]$afterMediaInventory.fileCount -ne [Int64]$pythonRuntime.Inventory.fileCount -or [string]$afterMediaInventory.treeSha256 -cne [string]$pythonRuntime.Inventory.treeSha256) { throw 'Candidate Python tree changed during media verification' }
         Write-Output 'Gate: media smoke helper passed.'
         $qtPythonPath = (Assert-RegularFile -Path $QtPython).FullName
-        $qtProcess = Invoke-CheckedProcess -FilePath $qtPythonPath -ArgumentList @($qtScript, $webpPath) -TimeoutSeconds 60
+        $qtProcess = Invoke-QtVerificationProcess -PythonPath $qtPythonPath -QtScript $qtScript -WebpPath $webpPath
         $qtResult = ConvertFrom-ExactlyOneJsonObject -StdOut $qtProcess.StdOut -Context 'Qt WebP helper'
         Assert-ExactObjectKeys -Object $qtResult -Expected @('ok', 'width', 'height', 'hasAlpha', 'alphaMin', 'alphaMax') -Context 'Qt WebP result'
         if (-not (Assert-JsonBoolean -Value $qtResult.ok -Context 'Qt ok') -or -not (Assert-JsonBoolean -Value $qtResult.hasAlpha -Context 'Qt alpha') -or (Assert-JsonInteger -Value $qtResult.width -Context 'Qt width') -ne (Assert-JsonInteger -Value $mediaFile.webp.width -Context 'media width') -or (Assert-JsonInteger -Value $qtResult.height -Context 'Qt height') -ne (Assert-JsonInteger -Value $mediaFile.webp.height -Context 'media height') -or (Assert-JsonInteger -Value $qtResult.alphaMin -Context 'Qt alpha minimum') -ne 0 -or (Assert-JsonInteger -Value $qtResult.alphaMax -Context 'Qt alpha maximum') -ne 255) { throw 'Qt WebP result does not match the media helper dimensions or alpha' }
