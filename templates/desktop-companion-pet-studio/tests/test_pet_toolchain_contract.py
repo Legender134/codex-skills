@@ -195,16 +195,17 @@ def test_pet_toolchain_lock_has_exact_assets() -> None:
     manifest = json.loads(LOCK_PATH.read_text(encoding="utf-8"))
     manifest_without_task2_extensions = json.loads(json.dumps(manifest))
     del manifest_without_task2_extensions["pythonRuntime"]
-    for tool_name in ("ffmpeg", "imagemagick", "libwebp"):
+    for tool_name in ("ffmpeg", "imagemagick", "libwebp", "rife"):
         del manifest_without_task2_extensions["tools"][tool_name]["installedFiles"]
 
     assert manifest["schemaVersion"] == 1
     assert manifest["platform"] == "windows-x64"
-    assert set(manifest["tools"]) == {"ffmpeg", "imagemagick", "libwebp"}
+    assert set(manifest["tools"]) == {"ffmpeg", "imagemagick", "libwebp", "rife"}
     assert set(manifest["models"]) == {"isnet-anime", "u2net_human_seg"}
     assert manifest["tools"]["ffmpeg"]["version"] == "9.0.1"
     assert manifest["tools"]["imagemagick"]["version"] == "7.1.2-29"
     assert manifest["tools"]["libwebp"]["version"] == "1.6.0"
+    assert manifest["tools"]["rife"]["version"] == "20221029"
 
     for group in ("tools", "models"):
         for item in manifest[group].values():
@@ -263,6 +264,17 @@ def test_pet_toolchain_lock_has_exact_assets() -> None:
                 "sha256": "48886f506b21f62e4661f0f4cbfca19800897c385128e8902542d29a950c93f1",
                 "entrypoint": "bin/cwebp.exe",
                 "versionRegex": r"^1\.6\.0(?:\s|$)",
+                "authenticode": {"required": False, "publishers": []},
+            },
+            "rife": {
+                "version": "20221029",
+                "sourcePage": "https://github.com/nihui/rife-ncnn-vulkan/releases/tag/20221029",
+                "url": "https://github.com/nihui/rife-ncnn-vulkan/releases/download/20221029/rife-ncnn-vulkan-20221029-windows.zip",
+                "size": 431540241,
+                "sha256": "d8e4d772d26cd8006ef0ad0bc82eb191b53c68677d1ae2f42506d74cbbbea606",
+                "entrypoint": "rife-ncnn-vulkan.exe",
+                "usageRegex": r"(?m)^Usage: rife-ncnn-vulkan -0 infile -1 infile1 -o outfile \[options\]\.\.\.$",
+                "modelDirectory": "rife-anime",
                 "authenticode": {"required": False, "publishers": []},
             },
         },
@@ -343,6 +355,17 @@ def test_pet_toolchain_lock_requires_trusted_python_runtime() -> None:
             assert "admin" not in value.casefold()
             assert not WINDOWS_ABSOLUTE.match(value)
             assert not PureWindowsPath(value).is_absolute()
+
+
+def test_common_script_accepts_locked_rife_tool_and_model_directory() -> None:
+    result = run_common_script(
+        "$lock = Read-PetToolchainLock "
+        f"-LockPath {powershell_literal(LOCK_PATH)}; "
+        "$lock.tools.rife.modelDirectory"
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout.strip() == "rife-anime"
 
 
 @pytest.mark.parametrize(
@@ -866,11 +889,13 @@ def test_pet_toolchain_lock_has_complete_installed_file_inventories() -> None:
         "ffmpeg": 45,
         "imagemagick": 23,
         "libwebp": 26,
+        "rife": 62,
     }
     expected_inventory_digests = {
         "ffmpeg": "d93a17adef4d9e7311c65d87035338259db0cc0301448e02264eaefb01cbd262",
         "imagemagick": "ba50cc8d4518892351a3f1cda9fe5db2c8e5c09be4def7c0236ff6a212c12074",
         "libwebp": "daf4d6dee7e40ed80e8c0507317e570cb9bc07455b9f39ac415a1641c7e28ee1",
+        "rife": "2de9376d41785761596a41bb579d04e5ed88189198b5d97e5321cfab05881e9f",
     }
     expected_critical_files = {
         "ffmpeg": {
@@ -903,9 +928,19 @@ def test_pet_toolchain_lock_has_complete_installed_file_inventories() -> None:
                 "sha256": "cf62555f14d64fac1d650e1a24c86465b70ca410c3d6942fce2e6f25672490c7",
             },
         },
+        "rife": {
+            "rife-ncnn-vulkan.exe": {
+                "size": 6974464,
+                "sha256": "4b970319db2814c82b15fceed8193151560a676a9eb63f20d4877be77b98f44f",
+            },
+            "rife-anime/flownet.bin": {
+                "size": 26885536,
+                "sha256": "ab459482f6c20294c40e94c802d09be34f5dc246576499acfd2d49c03b6cea9a",
+            },
+        },
     }
 
-    for tool_name in ("ffmpeg", "imagemagick", "libwebp"):
+    for tool_name in ("ffmpeg", "imagemagick", "libwebp", "rife"):
         tool = manifest["tools"][tool_name]
         installed_files = tool["installedFiles"]
 
@@ -1501,7 +1536,9 @@ def offline_production_wiring_harness(
         "$toolRoot = Join-Path $StagingRoot ('tools\\' + $ToolKey); "
         "[System.IO.Directory]::CreateDirectory($toolRoot) | Out-Null; "
         "$relative = if ($ToolKey -ceq 'imagemagick') { 'magick.exe' } "
-        "elseif ($ToolKey -ceq 'ffmpeg') { 'bin\\ffmpeg.exe' } else { 'bin\\cwebp.exe' }; "
+        "elseif ($ToolKey -ceq 'ffmpeg') { 'bin\\ffmpeg.exe' } "
+        "elseif ($ToolKey -ceq 'libwebp') { 'bin\\cwebp.exe' } "
+        "else { 'rife-ncnn-vulkan.exe' }; "
         "$entry = Join-Path $toolRoot $relative; "
         "[System.IO.Directory]::CreateDirectory((Split-Path -Parent $entry)) | Out-Null; "
         "[System.IO.File]::WriteAllText($entry, $ToolKey); return $entry }; "
@@ -1581,6 +1618,19 @@ def test_setup_offline_production_wiring_copies_models_and_publishes_atomically(
     ]
     version_root = tool_root / "versions" / digest
     manifest = json.loads((version_root / "installed.json").read_text(encoding="utf-8"))
+    assert manifest["assets"]["tools"] == {
+        tool_key: {
+            "size": lock["tools"][tool_key]["size"],
+            "sha256": lock["tools"][tool_key]["sha256"],
+        }
+        for tool_key in ("ffmpeg", "imagemagick", "libwebp", "rife")
+    }
+    assert manifest["entrypoints"]["tools"] == {
+        "ffmpeg": "tools/ffmpeg/bin/ffmpeg.exe",
+        "imagemagick": "tools/imagemagick/magick.exe",
+        "libwebp": "tools/libwebp/bin/cwebp.exe",
+        "rife": "tools/rife/rife-ncnn-vulkan.exe",
+    }
     expected_model_records = {
         model_key: {
             "size": len(payload),
@@ -1829,7 +1879,7 @@ def version_ownership_harness(tool_root: Path, mode: str) -> str:
         "function Install-LockedTool { param($StagingRoot, $DownloadsRoot, $ToolKey, $ToolLock, $ExtractorPath) "
         "$root = Join-Path $StagingRoot ('tools\\' + $ToolKey); "
         "[System.IO.Directory]::CreateDirectory($root) | Out-Null; "
-        "$relative = if ($ToolKey -eq 'imagemagick') { 'magick.exe' } elseif ($ToolKey -eq 'ffmpeg') { 'bin\\ffmpeg.exe' } else { 'bin\\cwebp.exe' }; "
+        "$relative = if ($ToolKey -eq 'imagemagick') { 'magick.exe' } elseif ($ToolKey -eq 'ffmpeg') { 'bin\\ffmpeg.exe' } elseif ($ToolKey -eq 'libwebp') { 'bin\\cwebp.exe' } else { 'rife-ncnn-vulkan.exe' }; "
         "$entry = Join-Path $root $relative; [System.IO.Directory]::CreateDirectory((Split-Path -Parent $entry)) | Out-Null; "
         "[System.IO.File]::WriteAllText($entry, $ToolKey); return $entry }; "
         "function Install-LockedPython { param($StagingRoot, $RequirementsPath, $WheelCache, $PythonRuntime) "
@@ -2218,7 +2268,7 @@ def publication_harness(
             if pointer_failure
             else "if ($null -ne $failure) { throw $failure }; "
             "$manifest = Get-Content -Raw -LiteralPath (Join-Path $versionPath 'installed.json') | ConvertFrom-Json -Depth 16; "
-            "foreach ($toolKey in @('ffmpeg', 'imagemagick', 'libwebp')) { "
+            "foreach ($toolKey in @('ffmpeg', 'imagemagick', 'libwebp', 'rife')) { "
             "$keys = @($manifest.assets.tools.$toolKey.PSObject.Properties.Name | Sort-Object); "
             "if (($keys -join ',') -cne 'sha256,size') { throw 'installed manifest tool schema changed' } }; "
             "$pythonKeys = @($manifest.python.PSObject.Properties.Name | Sort-Object); "
@@ -2647,6 +2697,142 @@ def test_verifier_is_read_only_by_contract() -> None:
     assert "pet toolchain verified" in source
 
 
+def test_verifier_wires_locked_rife_into_inventory_interface_and_media_gates() -> None:
+    source = VERIFY_SCRIPT.read_text(encoding="utf-8")
+
+    assert "rife = Resolve-ManifestEntrypoint" in source
+    assert "foreach ($toolName in @('ffmpeg', 'imagemagick', 'libwebp', 'rife'))" in source
+    assert "Assert-RifeInterface -Path $toolPaths.rife" in source
+    assert "-RifeModelPath $rifeModelPath" in source
+
+
+def test_verifier_accepts_rife_in_the_installed_manifest(tmp_path: Path) -> None:
+    lock = json.loads(LOCK_PATH.read_text(encoding="utf-8"))
+    digest = "a" * 64
+    candidate = tmp_path / "candidate"
+    candidate.mkdir()
+    installed = {
+        "lockDigest": digest,
+        "assets": {
+            "extractor": {
+                "sha256": lock["extractor"]["sha256"],
+                "size": lock["extractor"]["size"],
+            },
+            "tools": {
+                name: {"sha256": item["sha256"], "size": item["size"]}
+                for name, item in lock["tools"].items()
+            },
+            "models": {
+                name: {"sha256": item["sha256"], "size": item["size"]}
+                for name, item in lock["models"].items()
+            },
+        },
+        "python": {
+            "interpreter": "python/Scripts/python.exe",
+            "freeze": ["example==1"],
+            "fileCount": 1,
+            "treeSha256": "b" * 64,
+            "runtimeVersion": "Python 3.12.10",
+            "runtimePublisher": "CN=Python Software Foundation",
+        },
+        "entrypoints": {
+            "tools": {
+                name: f"tools/{name}/{item['entrypoint']}"
+                for name, item in lock["tools"].items()
+            },
+            "models": {
+                name: item["entrypoint"] for name, item in lock["models"].items()
+            },
+        },
+    }
+    (candidate / "installed.json").write_text(
+        json.dumps(installed), encoding="utf-8"
+    )
+    result = run_common_script(
+        f". {powershell_literal(VERIFY_SCRIPT)} "
+        f"-QtPython {powershell_literal(Path(sys.executable))}; "
+        f"$lock = Read-PetToolchainLock -LockPath {powershell_literal(LOCK_PATH)}; "
+        "$installed = Read-InstalledManifest "
+        f"-CandidateRoot {powershell_literal(candidate)} -Lock $lock -LockDigest '{digest}'; "
+        "$installed.entrypoints.tools.rife"
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout.strip() == "tools/rife/rife-ncnn-vulkan.exe"
+
+
+def test_verifier_accepts_a_real_rife_interpolation_result(tmp_path: Path) -> None:
+    workspace = tmp_path / "media"
+    workspace.mkdir()
+    for name in (
+        "cutout-isnet-anime.png",
+        "cutout-u2net_human_seg.png",
+        "cutout-isnet-anime.webp",
+        "rife-mid.png",
+    ):
+        (workspace / name).write_bytes(b"locked-output")
+    result_path = tmp_path / "media-result.json"
+    result_path.write_text(
+        json.dumps(
+            {
+                "schemaVersion": 1,
+                "tools": {
+                    "ffmpeg": "ffmpeg version 9.0.1",
+                    "ffprobe": "ffprobe version 9.0.1",
+                    "magick": "Version: ImageMagick 7.1.2-29 Q16 x64",
+                    "cwebp": "1.6.0",
+                },
+                "source": {
+                    "width": 256,
+                    "height": 256,
+                    "opencvBounds": [0, 0, 256, 256],
+                },
+                "models": {
+                    model_name: {
+                        "relativePath": f"cutout-{model_name}.png",
+                        "alpha": {
+                            "minimum": 0,
+                            "maximum": 255,
+                            "transparentPixels": 32768,
+                            "opaquePixels": 32768,
+                        },
+                    }
+                    for model_name in ("isnet-anime", "u2net_human_seg")
+                },
+                "webp": {
+                    "relativePath": "cutout-isnet-anime.webp",
+                    "width": 256,
+                    "height": 256,
+                    "hasAlpha": True,
+                    "alphaMin": 0,
+                    "alphaMax": 255,
+                },
+                "preview": {"frames": 4, "durationSeconds": 0.4},
+                "interpolation": {
+                    "relativePath": "rife-mid.png",
+                    "width": 64,
+                    "height": 64,
+                    "distinctFromInputs": True,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    result = run_common_script(
+        f". {powershell_literal(VERIFY_SCRIPT)} "
+        f"-QtPython {powershell_literal(Path(sys.executable))}; "
+        f"$payload = Get-Content -LiteralPath {powershell_literal(result_path)} -Raw | ConvertFrom-Json; "
+        "$path = Assert-MediaResult -Result $payload "
+        f"-Workspace {powershell_literal(workspace)}; "
+        "$path"
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout.strip().casefold() == str(
+        workspace / "cutout-isnet-anime.webp"
+    ).casefold()
+
+
 def test_qt_probe_keeps_one_json_object_on_missing_webp(tmp_path: Path) -> None:
     interpreter = qt_python_for_toolchain_contract()
     if interpreter is None:
@@ -2681,6 +2867,37 @@ def test_qt_probe_reports_real_transparent_webp_dimensions(tmp_path: Path) -> No
 
     assert probe.returncode == 0, probe.stdout + probe.stderr
     assert len(probe.stdout.splitlines()) == 1
+    assert json.loads(probe.stdout) == {
+        "ok": True,
+        "width": 7,
+        "height": 5,
+        "hasAlpha": True,
+        "alphaMin": 0,
+        "alphaMax": 255,
+    }
+
+
+def test_qt_verifier_clean_environment_supports_pyside6(tmp_path: Path) -> None:
+    from PIL import Image
+
+    interpreter = qt_python_for_toolchain_contract()
+    if interpreter is None:
+        pytest.skip("A PySide6-capable project interpreter is required")
+    image_path = tmp_path / "clean-environment.webp"
+    image = Image.new("RGBA", (7, 5), (16, 32, 64, 0))
+    image.putpixel((3, 2), (240, 80, 20, 255))
+    image.save(image_path, format="WEBP", lossless=True, exact=True)
+    probe = run_common_script(
+        f". {powershell_literal(VERIFY_SCRIPT)} "
+        f"-QtPython {powershell_literal(interpreter)}; "
+        "$result = Invoke-QtVerificationProcess "
+        f"-PythonPath {powershell_literal(interpreter)} "
+        f"-QtScript {powershell_literal(QT_VERIFY)} "
+        f"-WebpPath {powershell_literal(image_path)}; "
+        "$result.StdOut"
+    )
+
+    assert probe.returncode == 0, probe.stdout + probe.stderr
     assert json.loads(probe.stdout) == {
         "ok": True,
         "width": 7,
@@ -2739,10 +2956,16 @@ def media_smoke_arguments(
     ffprobe: Path,
     magick: Path,
     cwebp: Path,
+    rife: Path | None = None,
+    rife_model: Path | None = None,
     work_dir: Path,
     result_json: Path,
     numba_cache_dir: Path | None = None,
 ) -> list[str]:
+    if rife is None:
+        rife = cwebp.with_name("rife.exe")
+    if rife_model is None:
+        rife_model = cwebp.parent / "rife-anime"
     arguments = [
         "--models-root",
         str(models_root),
@@ -2754,6 +2977,10 @@ def media_smoke_arguments(
         str(magick),
         "--cwebp",
         str(cwebp),
+        "--rife",
+        str(rife),
+        "--rife-model",
+        str(rife_model),
         "--work-dir",
         str(work_dir),
         "--result-json",
@@ -2791,6 +3018,13 @@ def prepare_media_smoke_paths(tmp_path: Path) -> dict[str, Path]:
         tool_path = tmp_path / f"{tool_name}.exe"
         tool_path.write_bytes(b"fake-tool")
         paths[tool_name] = tool_path
+    rife_path = tmp_path / "rife.exe"
+    rife_path.write_bytes(b"fake-rife")
+    rife_model = tmp_path / "rife-anime"
+    rife_model.mkdir()
+    (rife_model / "flownet.bin").write_bytes(b"fake-rife-model")
+    paths["rife"] = rife_path
+    paths["rife_model"] = rife_model
     return paths
 
 
@@ -2884,6 +3118,18 @@ def configure_fake_media_runtime(
             destination = Path(arguments[arguments.index("-o") + 1])
             with Image.open(source) as cutout:
                 cutout.save(destination, format="WEBP", lossless=True, exact=True)
+            return subprocess.CompletedProcess(arguments, 0, "", "")
+        if executable == "rife.exe":
+            first = Path(arguments[arguments.index("-0") + 1])
+            second = Path(arguments[arguments.index("-1") + 1])
+            destination = Path(arguments[arguments.index("-o") + 1])
+            model = Path(arguments[arguments.index("-m") + 1])
+            assert model == Path(arguments[0]).parent / "rife-anime"
+            with Image.open(first) as first_image, Image.open(second) as second_image:
+                blended = Image.blend(
+                    first_image.convert("RGB"), second_image.convert("RGB"), 0.5
+                )
+                blended.save(destination, format="PNG")
             return subprocess.CompletedProcess(arguments, 0, "", "")
         if executable == "ffmpeg.exe":
             source = Path(arguments[arguments.index("-i") + 1])
@@ -3374,7 +3620,15 @@ def test_media_helper_runs_each_model_with_fake_tools_and_writes_json_atomically
     ]
     assert os.environ["U2NET_HOME"] == str(paths["models_root"])
     payload = json.loads(paths["result_json"].read_text(encoding="utf-8"))
-    assert set(payload) == {"schemaVersion", "tools", "source", "models", "webp", "preview"}
+    assert set(payload) == {
+        "schemaVersion",
+        "tools",
+        "source",
+        "models",
+        "webp",
+        "preview",
+        "interpolation",
+    }
     assert payload["schemaVersion"] == 1
     assert set(payload["tools"]) == {"ffmpeg", "ffprobe", "magick", "cwebp"}
     assert payload["source"] == {
@@ -3400,6 +3654,12 @@ def test_media_helper_runs_each_model_with_fake_tools_and_writes_json_atomically
         "alphaMax": 255,
     }
     assert payload["preview"] == {"frames": 4, "durationSeconds": 0.4}
+    assert payload["interpolation"] == {
+        "relativePath": "rife-mid.png",
+        "width": 64,
+        "height": 64,
+        "distinctFromInputs": True,
+    }
     assert json.loads(stdout_lines[0])["webp"] == payload["webp"]
     for model_name in module.MODEL_NAMES:
         with Image.open(paths["work_dir"] / f"cutout-{model_name}.png") as persisted_cutout:
@@ -3416,6 +3676,7 @@ def test_media_helper_runs_each_model_with_fake_tools_and_writes_json_atomically
     assert any(command[0] == str(paths["magick"]) for command in command_log)
     assert any("-lossless" in command for command in command_log)
     assert any(command[0] == str(paths["ffprobe"]) for command in command_log)
+    assert any(command[0] == str(paths["rife"]) for command in command_log)
     assert not list(paths["work_dir"].glob("*.tmp-*"))
 
 
@@ -3699,11 +3960,12 @@ def test_verifier_starts_python_stages_isolated_with_clean_environments(
         f"$env:PYTHONPATH = {powershell_literal(attacker_site)}; "
         f"$env:PET_MARKER = {powershell_literal(attacker_marker)}; "
         f"$env:NUMBA_CACHE_DIR = {powershell_literal(outside_cache)}; "
-        "$tools = [ordered]@{ ffmpeg = 'C:\\locked\\ffmpeg.exe'; imagemagick = 'C:\\locked\\magick.exe'; libwebp = 'C:\\locked\\cwebp.exe' }; "
+        "$tools = [ordered]@{ ffmpeg = 'C:\\locked\\ffmpeg.exe'; imagemagick = 'C:\\locked\\magick.exe'; libwebp = 'C:\\locked\\cwebp.exe'; rife = 'C:\\locked\\rife.exe' }; "
         "$details = Invoke-MediaVerificationProcess "
         f"-PythonPath {powershell_literal(Path(sys.executable))} "
         f"-MediaScript {powershell_literal(probe_script)} "
         "-ModelsRoot 'C:\\locked\\models' -ToolPaths $tools -FfprobePath 'C:\\locked\\ffprobe.exe' "
+        "-RifeModelPath 'C:\\locked\\rife-anime' "
         f"-WorkspaceRoot {powershell_literal(media_workspace.parent)} -WorkDir {powershell_literal(media_workspace)} -ResultJson {powershell_literal(result_json)}; "
         "$state = $details.StdOut | ConvertFrom-Json; "
         f"if ($state.numba_cache -cne {powershell_literal(expected_cache)}) {{ throw 'private Numba cache was not injected before startup' }}; "
@@ -3711,6 +3973,10 @@ def test_verifier_starts_python_stages_isolated_with_clean_environments(
         "if ([int]$state.isolated -ne 1 -or -not [bool]$state.dont_write_bytecode) { throw 'media Python flags were not isolated and bytecode-free' }; "
         "$cacheArgument = [array]::IndexOf([string[]]$state.argv, '--numba-cache-dir'); "
         f"if ($cacheArgument -lt 0 -or $state.argv[$cacheArgument + 1] -cne {powershell_literal(expected_cache)}) {{ throw 'media Python omitted the explicit sibling cache argument' }}; "
+        "$rifeArgument = [array]::IndexOf([string[]]$state.argv, '--rife'); "
+        "if ($rifeArgument -lt 0 -or $state.argv[$rifeArgument + 1] -cne 'C:\\locked\\rife.exe') { throw 'media Python omitted the locked RIFE executable' }; "
+        "$rifeModelArgument = [array]::IndexOf([string[]]$state.argv, '--rife-model'); "
+        "if ($rifeModelArgument -lt 0 -or $state.argv[$rifeModelArgument + 1] -cne 'C:\\locked\\rife-anime') { throw 'media Python omitted the locked RIFE anime model' }; "
         "'isolated-media-python-passed'"
     )
     result = run_setup_script(command)
@@ -3767,7 +4033,7 @@ def test_verifier_starts_python_stages_isolated_with_clean_environments(
         "if ($ArgumentList -contains $expectedQtScript) { "
         "$expectedArguments = @('-I', '-B', $expectedQtScript, $expectedWebp); "
         "if (($ArgumentList -join [char]0) -cne ($expectedArguments -join [char]0)) { throw 'Qt Python was not isolated and bytecode-free' }; "
-        "if ($TimeoutSeconds -ne 60 -or $Environment.Count -ne 0) { throw 'Qt Python process contract changed' }; "
+        "if ($TimeoutSeconds -ne 60 -or $Environment.Count -ne 1 -or $Environment.PATH -cne '') { throw 'Qt Python process contract changed' }; "
         "$script:qtSeen = $true; "
         "return [pscustomobject]@{ ExitCode = 0; StdOut = '{\"ok\":true}'; StdErr = '' } }; "
         "$expectedArguments = @('-I', '-B', '--version'); "
@@ -4054,7 +4320,7 @@ def verifier_manifest(lock_digest: str) -> dict[str, object]:
                     "sha256": lock["tools"][tool_name]["sha256"],
                     "size": lock["tools"][tool_name]["size"],
                 }
-                for tool_name in ("ffmpeg", "imagemagick", "libwebp")
+                for tool_name in ("ffmpeg", "imagemagick", "libwebp", "rife")
             },
             "models": {
                 model_name: {
@@ -4077,6 +4343,7 @@ def verifier_manifest(lock_digest: str) -> dict[str, object]:
                 "ffmpeg": "tools/ffmpeg/bin/ffmpeg.exe",
                 "imagemagick": "tools/imagemagick/magick.exe",
                 "libwebp": "tools/libwebp/bin/cwebp.exe",
+                "rife": "tools/rife/rife-ncnn-vulkan.exe",
             },
             "models": {
                 model_name: lock["models"][model_name]["entrypoint"]
@@ -4230,6 +4497,28 @@ def test_verifier_version_gate_keeps_contextual_mismatch_error() -> None:
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert result.stdout.strip() == "verifier-version-mismatch-rejected"
+
+
+def test_verifier_rife_interface_accepts_the_locked_usage_and_exit_code() -> None:
+    result = run_setup_script(
+        "$ErrorActionPreference = 'Stop'; "
+        f". {powershell_literal(VERIFY_SCRIPT)} -QtPython {powershell_literal(Path(sys.executable))}; "
+        "function Invoke-CheckedProcess { "
+        "param($FilePath, [string[]]$ArgumentList, [int]$TimeoutSeconds, [int[]]$ExpectedExitCode = @(0)); "
+        "if ($FilePath -cne 'C:\\locked\\rife-ncnn-vulkan.exe') { throw 'unexpected RIFE path' }; "
+        "if (($ArgumentList -join '|') -cne '-h') { throw 'unexpected RIFE arguments' }; "
+        "if ($TimeoutSeconds -ne 60) { throw 'unexpected RIFE timeout' }; "
+        "if (($ExpectedExitCode -join ',') -cne '-1') { throw 'RIFE help exit code was not explicitly allowed' }; "
+        "return [pscustomobject]@{ ExitCode = -1; StdOut = 'Usage: rife-ncnn-vulkan -0 infile -1 infile1 -o outfile [options]...'; StdErr = '' } "
+        "}; "
+        "$matched = Assert-RifeInterface -Path 'C:\\locked\\rife-ncnn-vulkan.exe' "
+        "-UsageRegex '(?m)^Usage: rife-ncnn-vulkan -0 infile -1 infile1 -o outfile \\[options\\]\\.\\.\\.$'; "
+        "if ($matched -cne 'Usage: rife-ncnn-vulkan -0 infile -1 infile1 -o outfile [options]...') { throw 'unexpected RIFE usage match' }; "
+        "'verifier-rife-interface-accepted'"
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout.strip() == "verifier-rife-interface-accepted"
 
 
 def test_verifier_requires_an_exact_tool_inventory_before_execution(tmp_path: Path) -> None:
@@ -4573,6 +4862,29 @@ def test_media_cleanup_holds_validated_identities_during_a_synchronised_swap(
             os.rmdir(media)
 
 
+def test_media_cleanup_accepts_locked_rife_smoke_artifacts(
+    short_local_tmp_path: Path,
+) -> None:
+    verify_root = short_local_tmp_path / "verify"
+    workspace = verify_root / "verify-0123456789abcdef0123456789abcdef"
+    media = workspace / "media-0123456789abcdef0123456789abcdef"
+    media.mkdir(parents=True)
+    for name in ("rife-first.png", "rife-second.png", "rife-mid.png"):
+        (media / name).write_bytes(b"owned RIFE smoke artifact")
+
+    result = run_setup_script(
+        "$ErrorActionPreference = 'Stop'; "
+        f". {powershell_literal(VERIFY_SCRIPT)} -QtPython {powershell_literal(Path(sys.executable))}; "
+        f"Remove-VerificationWorkspace -VerifyRoot {powershell_literal(verify_root)} "
+        f"-Workspace {powershell_literal(workspace)} -MediaWorkspace {powershell_literal(media)}; "
+        "'rife-cleanup-accepted'"
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout.strip() == "rife-cleanup-accepted"
+    assert not workspace.exists()
+
+
 def test_numba_cleanup_rejects_an_ancestor_swap_before_handle_binding(
     short_local_tmp_path: Path,
 ) -> None:
@@ -4760,6 +5072,8 @@ def test_pet_toolchain_documentation_has_exact_operator_sections_and_commands() 
         "不修改 PATH",
         "isnet-anime",
         "u2net_human_seg",
+        "RIFE",
+        "rife-anime",
         "PET TOOLCHAIN VERIFIED",
     ):
         assert required in text

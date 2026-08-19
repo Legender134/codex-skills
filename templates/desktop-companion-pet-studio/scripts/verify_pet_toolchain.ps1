@@ -270,8 +270,8 @@ function Read-InstalledManifest {
     }
     Assert-ExactObjectKeys -Object $installed.assets -Expected @('extractor', 'tools', 'models') -Context 'installed manifest assets'
     Assert-AssetRecordMatchesLock -Record $installed.assets.extractor -LockedAsset $Lock.extractor -Context 'extractor'
-    Assert-ExactObjectKeys -Object $installed.assets.tools -Expected @('ffmpeg', 'imagemagick', 'libwebp') -Context 'installed tool assets'
-    foreach ($toolName in @('ffmpeg', 'imagemagick', 'libwebp')) {
+    Assert-ExactObjectKeys -Object $installed.assets.tools -Expected @('ffmpeg', 'imagemagick', 'libwebp', 'rife') -Context 'installed tool assets'
+    foreach ($toolName in @('ffmpeg', 'imagemagick', 'libwebp', 'rife')) {
         Assert-AssetRecordMatchesLock -Record $installed.assets.tools.$toolName -LockedAsset $Lock.tools.$toolName -Context "tool $toolName"
     }
     Assert-ExactObjectKeys -Object $installed.assets.models -Expected @('isnet-anime', 'u2net_human_seg') -Context 'installed model assets'
@@ -293,7 +293,7 @@ function Read-InstalledManifest {
         throw 'Installed Python runtime record is malformed'
     }
     Assert-ExactObjectKeys -Object $installed.entrypoints -Expected @('tools', 'models') -Context 'installed entrypoints'
-    Assert-ExactObjectKeys -Object $installed.entrypoints.tools -Expected @('ffmpeg', 'imagemagick', 'libwebp') -Context 'installed tool entrypoints'
+    Assert-ExactObjectKeys -Object $installed.entrypoints.tools -Expected @('ffmpeg', 'imagemagick', 'libwebp', 'rife') -Context 'installed tool entrypoints'
     Assert-ExactObjectKeys -Object $installed.entrypoints.models -Expected @('isnet-anime', 'u2net_human_seg') -Context 'installed model entrypoints'
     return $installed
 }
@@ -393,6 +393,18 @@ function Assert-VersionOutput {
     $details = Invoke-CheckedProcess -FilePath $Path -ArgumentList $ArgumentList -TimeoutSeconds 60 -Environment $Environment -CleanEnvironment:$CleanEnvironment
     $failureMessage = "$Context did not report the locked version: $Path"
     return Get-LockedVersionOutputMatch -StdOut $details.StdOut -StdErr $details.StdErr -VersionRegex $VersionRegex -FailureMessage $failureMessage
+}
+
+
+function Assert-RifeInterface {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][string]$UsageRegex
+    )
+
+    $details = Invoke-CheckedProcess -FilePath $Path -ArgumentList @('-h') -TimeoutSeconds 60 -ExpectedExitCode @(-1)
+    return Get-LockedVersionOutputMatch -StdOut $details.StdOut -StdErr $details.StdErr -VersionRegex $UsageRegex -FailureMessage "RIFE did not report the locked command interface: $Path"
 }
 
 
@@ -540,7 +552,10 @@ namespace DesktopCompanionPetToolchain
                 "preview-extract-01.png",
                 "preview-extract-02.png",
                 "preview-extract-03.png",
-                "preview-extract-04.png"
+                "preview-extract-04.png",
+                "rife-first.png",
+                "rife-second.png",
+                "rife-mid.png"
             },
             StringComparer.Ordinal);
 
@@ -1183,7 +1198,7 @@ function Assert-MediaResult {
     [CmdletBinding()]
     param([Parameter(Mandatory)][object]$Result, [Parameter(Mandatory)][string]$Workspace)
 
-    Assert-ExactObjectKeys -Object $Result -Expected @('schemaVersion', 'tools', 'source', 'models', 'webp', 'preview') -Context 'media result'
+    Assert-ExactObjectKeys -Object $Result -Expected @('schemaVersion', 'tools', 'source', 'models', 'webp', 'preview', 'interpolation') -Context 'media result'
     if ((Assert-JsonInteger -Value $Result.schemaVersion -Context 'media schemaVersion') -ne 1) { throw 'Media result schema version is unsupported' }
     Assert-ExactObjectKeys -Object $Result.tools -Expected @('ffmpeg', 'ffprobe', 'magick', 'cwebp') -Context 'media tools'
     foreach ($name in @('ffmpeg', 'ffprobe', 'magick', 'cwebp')) { $null = Assert-JsonString -Value $Result.tools.$name -Context "media $name version" }
@@ -1206,6 +1221,14 @@ function Assert-MediaResult {
     if ((Assert-JsonInteger -Value $Result.webp.width -Context 'media WebP width') -ne 256 -or (Assert-JsonInteger -Value $Result.webp.height -Context 'media WebP height') -ne 256 -or -not (Assert-JsonBoolean -Value $Result.webp.hasAlpha -Context 'media WebP alpha') -or (Assert-JsonInteger -Value $Result.webp.alphaMin -Context 'media WebP alpha minimum') -ne 0 -or (Assert-JsonInteger -Value $Result.webp.alphaMax -Context 'media WebP alpha maximum') -ne 255) { throw 'Media WebP result does not contain expected transparent dimensions' }
     Assert-ExactObjectKeys -Object $Result.preview -Expected @('frames', 'durationSeconds') -Context 'media preview result'
     if ((Assert-JsonInteger -Value $Result.preview.frames -Context 'media preview frames') -ne 4 -or $Result.preview.durationSeconds -isnot [double] -and $Result.preview.durationSeconds -isnot [decimal] -and $Result.preview.durationSeconds -isnot [int64] -or [double]$Result.preview.durationSeconds -lt 0.25 -or [double]$Result.preview.durationSeconds -gt 0.55) { throw 'Media preview result is invalid' }
+    Assert-ExactObjectKeys -Object $Result.interpolation -Expected @('relativePath', 'width', 'height', 'distinctFromInputs') -Context 'media interpolation result'
+    $interpolationPath = Resolve-ContainedPath -Root $Workspace -RelativePath (Assert-JsonString -Value $Result.interpolation.relativePath -Context 'media interpolation relative path')
+    $null = Assert-RegularFile -Path $interpolationPath
+    if ((Assert-JsonInteger -Value $Result.interpolation.width -Context 'media interpolation width') -ne 64 -or
+        (Assert-JsonInteger -Value $Result.interpolation.height -Context 'media interpolation height') -ne 64 -or
+        -not (Assert-JsonBoolean -Value $Result.interpolation.distinctFromInputs -Context 'media interpolation distinctness')) {
+        throw 'Media RIFE interpolation result is invalid'
+    }
     return $webpPath
 }
 
@@ -1218,6 +1241,7 @@ function Invoke-MediaVerificationProcess {
         [Parameter(Mandatory)][string]$ModelsRoot,
         [Parameter(Mandatory)][System.Collections.IDictionary]$ToolPaths,
         [Parameter(Mandatory)][string]$FfprobePath,
+        [Parameter(Mandatory)][string]$RifeModelPath,
         [Parameter(Mandatory)][string]$WorkspaceRoot,
         [Parameter(Mandatory)][string]$WorkDir,
         [Parameter(Mandatory)][string]$ResultJson
@@ -1242,6 +1266,8 @@ function Invoke-MediaVerificationProcess {
         '--ffprobe', $FfprobePath,
         '--magick', $ToolPaths.imagemagick,
         '--cwebp', $ToolPaths.libwebp,
+        '--rife', $ToolPaths.rife,
+        '--rife-model', $RifeModelPath,
         '--work-dir', $WorkDir,
         '--result-json', $ResultJson,
         '--numba-cache-dir', $numbaCache
@@ -1261,7 +1287,8 @@ function Invoke-QtVerificationProcess {
         [Parameter(Mandatory)][string]$WebpPath
     )
 
-    return Invoke-CheckedProcess -FilePath $PythonPath -ArgumentList @('-I', '-B', $QtScript, $WebpPath) -TimeoutSeconds 60 -CleanEnvironment
+    return Invoke-CheckedProcess -FilePath $PythonPath -ArgumentList @('-I', '-B', $QtScript, $WebpPath) `
+        -TimeoutSeconds 60 -CleanEnvironment -Environment @{ PATH = '' }
 }
 
 
@@ -1292,11 +1319,15 @@ function Invoke-PetToolchainVerification {
             ffmpeg = Resolve-ManifestEntrypoint -CandidateRoot $candidate -Value $installed.entrypoints.tools.ffmpeg -ExpectedRelativePath ('tools/ffmpeg/' + ([string]$lock.tools.ffmpeg.entrypoint).Replace('\', '/')) -Context 'FFmpeg'
             imagemagick = Resolve-ManifestEntrypoint -CandidateRoot $candidate -Value $installed.entrypoints.tools.imagemagick -ExpectedRelativePath ('tools/imagemagick/' + ([string]$lock.tools.imagemagick.entrypoint).Replace('\', '/')) -Context 'ImageMagick'
             libwebp = Resolve-ManifestEntrypoint -CandidateRoot $candidate -Value $installed.entrypoints.tools.libwebp -ExpectedRelativePath ('tools/libwebp/' + ([string]$lock.tools.libwebp.entrypoint).Replace('\', '/')) -Context 'libwebp'
+            rife = Resolve-ManifestEntrypoint -CandidateRoot $candidate -Value $installed.entrypoints.tools.rife -ExpectedRelativePath ('tools/rife/' + ([string]$lock.tools.rife.entrypoint).Replace('\', '/')) -Context 'RIFE'
         }
         $ffprobePath = Resolve-ContainedPath -Root $candidate -RelativePath ('tools\ffmpeg\' + ([string]$lock.tools.ffmpeg.probeEntrypoint).Replace('/', '\'))
+        $rifeToolRoot = Resolve-ContainedPath -Root $candidate -RelativePath 'tools\rife'
+        $rifeModelPath = Resolve-ContainedPath -Root $rifeToolRoot -RelativePath ([string]$lock.tools.rife.modelDirectory)
+        $null = Assert-RegularDirectoryAndAncestors -Path $rifeModelPath
         $modelPaths = [ordered]@{}
         foreach ($modelName in @('isnet-anime', 'u2net_human_seg')) { $modelPaths[$modelName] = Resolve-ManifestEntrypoint -CandidateRoot $candidate -Value $installed.entrypoints.models.$modelName -ExpectedRelativePath ([string]$lock.models.$modelName.entrypoint) -Context "model $modelName" }
-        foreach ($toolName in @('ffmpeg', 'imagemagick', 'libwebp')) { Assert-InstalledToolInventory -ToolRoot (Resolve-ContainedPath -Root $candidate -RelativePath "tools\$toolName") -Tool $lock.tools.$toolName -Context $toolName }
+        foreach ($toolName in @('ffmpeg', 'imagemagick', 'libwebp', 'rife')) { Assert-InstalledToolInventory -ToolRoot (Resolve-ContainedPath -Root $candidate -RelativePath "tools\$toolName") -Tool $lock.tools.$toolName -Context $toolName }
         foreach ($modelName in @('isnet-anime', 'u2net_human_seg')) { Assert-FileDigest -Path $modelPaths[$modelName] -ExpectedSize ([Int64]$lock.models.$modelName.size) -ExpectedSha256 ([string]$lock.models.$modelName.sha256) }
         $pythonRuntime = Assert-PythonRuntime -CandidateRoot $candidate -InstalledPython $installed.python -RuntimePolicy $lock.pythonRuntime
         $null = Assert-AuthenticodePolicy -Policy $lock.tools.imagemagick.authenticode -Path $toolPaths.imagemagick -Context 'ImageMagick'
@@ -1306,6 +1337,7 @@ function Invoke-PetToolchainVerification {
         Assert-VersionOutput -Path $ffprobePath -ArgumentList @('-version') -VersionRegex $ffprobeRegex -Context 'ffprobe'
         Assert-VersionOutput -Path $toolPaths.imagemagick -ArgumentList @('-version') -VersionRegex ([string]$lock.tools.imagemagick.versionRegex) -Context 'ImageMagick'
         Assert-VersionOutput -Path $toolPaths.libwebp -ArgumentList @('-version') -VersionRegex ([string]$lock.tools.libwebp.versionRegex) -Context 'libwebp'
+        Assert-RifeInterface -Path $toolPaths.rife -UsageRegex ([string]$lock.tools.rife.usageRegex)
         Assert-PythonEnvironment -PythonPath $pythonRuntime.PythonPath -ExpectedFreeze @($installed.python.freeze) -RuntimeVersion ([string]$installed.python.runtimeVersion) -VersionRegex ([string]$lock.pythonRuntime.versionRegex)
         Write-Output 'Gate: tool versions, publisher policy, and Python environment passed.'
         $null = Assert-NumbaCachePathBudget -ToolRoot $toolRootFull
@@ -1313,7 +1345,7 @@ function Invoke-PetToolchainVerification {
         $mediaScript = (Assert-RegularFile -Path (Join-Path $PSScriptRoot '..\tools\verify_pet_media.py')).FullName
         $qtScript = (Assert-RegularFile -Path (Join-Path $PSScriptRoot '..\tools\verify_qt_webp.py')).FullName
         $mediaResultPath = Resolve-ContainedPath -Root $workspaceInfo.MediaWorkspace -RelativePath 'result.json'
-        $mediaProcess = Invoke-MediaVerificationProcess -PythonPath $pythonRuntime.PythonPath -MediaScript $mediaScript -ModelsRoot (Resolve-ContainedPath -Root $candidate -RelativePath 'models') -ToolPaths $toolPaths -FfprobePath $ffprobePath -WorkspaceRoot $workspaceInfo.Workspace -WorkDir $workspaceInfo.MediaWorkspace -ResultJson $mediaResultPath
+        $mediaProcess = Invoke-MediaVerificationProcess -PythonPath $pythonRuntime.PythonPath -MediaScript $mediaScript -ModelsRoot (Resolve-ContainedPath -Root $candidate -RelativePath 'models') -ToolPaths $toolPaths -FfprobePath $ffprobePath -RifeModelPath $rifeModelPath -WorkspaceRoot $workspaceInfo.Workspace -WorkDir $workspaceInfo.MediaWorkspace -ResultJson $mediaResultPath
         $mediaStdOut = ConvertFrom-ExactlyOneJsonObject -StdOut $mediaProcess.StdOut -Context 'media helper'
         $mediaFile = Read-StrictJsonFile -Path $mediaResultPath -Context 'media result file'
         if (($mediaStdOut | ConvertTo-Json -Depth 32 -Compress) -cne ($mediaFile | ConvertTo-Json -Depth 32 -Compress)) { throw 'Media helper stdout does not match its atomically written result file' }

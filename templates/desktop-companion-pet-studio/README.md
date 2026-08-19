@@ -32,6 +32,6 @@ $qtPython = 'C:\path\to\PySide6\python.exe'
 
 Require setup to report `Installed and published pet toolchain <lockDigest>.` (or, on an unchanged repeat, `Pet toolchain <lockDigest> is already current.`). Require verification to end with `PET TOOLCHAIN VERIFIED`.
 
-Plan for approximately 573 MB of locked downloads/cache and approximately 1.43 GB for each installed version. The overlay tracks source and metadata only; downloaded tools, models, caches, and installed environments stay machine-local.
+Plan for approximately 1.01 GB of locked offline payload after adding the official RIFE 20221029 archive, and approximately 1.90 GB for each installed version. The overlay tracks source and metadata only; downloaded tools, models, caches, and installed environments stay machine-local.
 
 See the [detailed operator guide](docs/development-pet-toolchain.md) for toolchain behavior, verification gates, and operational constraints.

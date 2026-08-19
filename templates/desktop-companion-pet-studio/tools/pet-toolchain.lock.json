@@ -449,6 +449,270 @@
           "sha256": "bf84f754ae60e8924b2a1416d9fd8f95e35d89742a691103ee1d7e013c21a723"
         }
       }
+    },
+    "rife": {
+      "version": "20221029",
+      "sourcePage": "https://github.com/nihui/rife-ncnn-vulkan/releases/tag/20221029",
+      "url": "https://github.com/nihui/rife-ncnn-vulkan/releases/download/20221029/rife-ncnn-vulkan-20221029-windows.zip",
+      "size": 431540241,
+      "sha256": "d8e4d772d26cd8006ef0ad0bc82eb191b53c68677d1ae2f42506d74cbbbea606",
+      "entrypoint": "rife-ncnn-vulkan.exe",
+      "usageRegex": "(?m)^Usage: rife-ncnn-vulkan -0 infile -1 infile1 -o outfile \\[options\\]\\.\\.\\.$",
+      "modelDirectory": "rife-anime",
+      "authenticode": {
+        "required": false,
+        "publishers": []
+      },
+      "installedFiles": {
+        "LICENSE": {
+          "size": 1093,
+          "sha256": "de18cbedb0c3b0d1eeb9ccac3988cdf69c21fa89039cd97dd8846cb68f661f81"
+        },
+        "README.md": {
+          "size": 6281,
+          "sha256": "3af96328be0858e6dd3798d3ea63adcdfd750faa6fec106a06434f513febfef8"
+        },
+        "rife-anime/contextnet.bin": {
+          "size": 3192340,
+          "sha256": "abc4bdcc425726268d55fe380b7615e8dc6b3feba69986ce861321b1b8cc5dc6"
+        },
+        "rife-anime/contextnet.param": {
+          "size": 5831,
+          "sha256": "27949d32886fb08732be00e5e4a3935dafddf622074aa6d30c6885cd2983f2cf"
+        },
+        "rife-anime/flownet.bin": {
+          "size": 26885536,
+          "sha256": "ab459482f6c20294c40e94c802d09be34f5dc246576499acfd2d49c03b6cea9a"
+        },
+        "rife-anime/flownet.param": {
+          "size": 27469,
+          "sha256": "4156e10152cc51c50f9f41dec0eeb394492f89e70bf6f5a831667703004a78a3"
+        },
+        "rife-anime/fusionnet.bin": {
+          "size": 29962920,
+          "sha256": "006cdedc84c20f30825ab65a44655ee6baf181573118ca039a344dc6adff7cd9"
+        },
+        "rife-anime/fusionnet.param": {
+          "size": 8462,
+          "sha256": "18e4914ba7194158be6acb4c9b89c6d5a326e6293387cc046b974e76ad698d2e"
+        },
+        "rife-HD/contextnet.bin": {
+          "size": 3192340,
+          "sha256": "dd1fe09c75cd93060200b88154db4c6f871185d49ba028a52f07d5e404701931"
+        },
+        "rife-HD/contextnet.param": {
+          "size": 5831,
+          "sha256": "27949d32886fb08732be00e5e4a3935dafddf622074aa6d30c6885cd2983f2cf"
+        },
+        "rife-HD/flownet.bin": {
+          "size": 26885536,
+          "sha256": "bcad0fdd5dcc3ba07c60359d1460b0fef6856f888eabd57dc721cc466c59ae30"
+        },
+        "rife-HD/flownet.param": {
+          "size": 27469,
+          "sha256": "4156e10152cc51c50f9f41dec0eeb394492f89e70bf6f5a831667703004a78a3"
+        },
+        "rife-HD/fusionnet.bin": {
+          "size": 29962920,
+          "sha256": "f58e6f05440b735349a59973d14abd5e51662404aee070536e52c2f7cfdba440"
+        },
+        "rife-HD/fusionnet.param": {
+          "size": 8462,
+          "sha256": "18e4914ba7194158be6acb4c9b89c6d5a326e6293387cc046b974e76ad698d2e"
+        },
+        "rife-ncnn-vulkan.exe": {
+          "size": 6974464,
+          "sha256": "4b970319db2814c82b15fceed8193151560a676a9eb63f20d4877be77b98f44f"
+        },
+        "rife-UHD/contextnet.bin": {
+          "size": 3192340,
+          "sha256": "1f78c6ddf0e423deb90adb26d7fdfb7452277acc3bf809190eeee2b04c64d79b"
+        },
+        "rife-UHD/contextnet.param": {
+          "size": 5831,
+          "sha256": "27949d32886fb08732be00e5e4a3935dafddf622074aa6d30c6885cd2983f2cf"
+        },
+        "rife-UHD/flownet.bin": {
+          "size": 26885536,
+          "sha256": "7faa0572aebab154817e9c5a0beb584dedae87b93603782f4bda23d999f1dd09"
+        },
+        "rife-UHD/flownet.param": {
+          "size": 27469,
+          "sha256": "4156e10152cc51c50f9f41dec0eeb394492f89e70bf6f5a831667703004a78a3"
+        },
+        "rife-UHD/fusionnet.bin": {
+          "size": 29962920,
+          "sha256": "5c9428bb8b270b4da69ce213ca98e23d5cef8eda78ab8bae1599d559497176b8"
+        },
+        "rife-UHD/fusionnet.param": {
+          "size": 8462,
+          "sha256": "18e4914ba7194158be6acb4c9b89c6d5a326e6293387cc046b974e76ad698d2e"
+        },
+        "rife-v2.3/contextnet.bin": {
+          "size": 2387688,
+          "sha256": "48cd291e3755112a3276aa216120445803601d2dbf6f66ab7dd86326a4a0e446"
+        },
+        "rife-v2.3/contextnet.param": {
+          "size": 3360,
+          "sha256": "82c04da2d9a894986a78073803546ec75eeaf2e8e5a7d3bef312094aa49db4b1"
+        },
+        "rife-v2.3/flownet.bin": {
+          "size": 30555792,
+          "sha256": "0cd8d87cb86882d4ebb587d78ca276c1eeb3e7f3d093bed1b77c7d6ef7db6887"
+        },
+        "rife-v2.3/flownet.param": {
+          "size": 10178,
+          "sha256": "d6217636d4f71871c721bfea379e99c0df4e4d1446d282427a3939b38aa7fb92"
+        },
+        "rife-v2.3/fusionnet.bin": {
+          "size": 23686092,
+          "sha256": "30fdc1ffdcace52688871645b20b93a5104054e8ece7f7187ed3573e9fa54f5b"
+        },
+        "rife-v2.3/fusionnet.param": {
+          "size": 5775,
+          "sha256": "6a33fa5befe657061af4c12390917c51028e609ea3c0e7c1d390fea6a8c4f870"
+        },
+        "rife-v2.4/contextnet.bin": {
+          "size": 2387688,
+          "sha256": "2b48d1c8f29d67f0ec839fa96e478caa0b8db200f82a6dad454514c20a5d9644"
+        },
+        "rife-v2.4/contextnet.param": {
+          "size": 3360,
+          "sha256": "82c04da2d9a894986a78073803546ec75eeaf2e8e5a7d3bef312094aa49db4b1"
+        },
+        "rife-v2.4/flownet.bin": {
+          "size": 30555792,
+          "sha256": "924c5d5461099cde803f85953868bf8407f8a6b342861c75122f2876d96e55b1"
+        },
+        "rife-v2.4/flownet.param": {
+          "size": 10178,
+          "sha256": "d6217636d4f71871c721bfea379e99c0df4e4d1446d282427a3939b38aa7fb92"
+        },
+        "rife-v2.4/fusionnet.bin": {
+          "size": 23686092,
+          "sha256": "26a8188b8b6fc087d03d7729ccfc92fb1ba8f40d2b237aee13436a40477d1840"
+        },
+        "rife-v2.4/fusionnet.param": {
+          "size": 5775,
+          "sha256": "6a33fa5befe657061af4c12390917c51028e609ea3c0e7c1d390fea6a8c4f870"
+        },
+        "rife-v2/contextnet.bin": {
+          "size": 2387688,
+          "sha256": "d1c8845a5e53a49816f8d9c1b9920e6c279f82f2b220b9a6e56814ab77972ea0"
+        },
+        "rife-v2/contextnet.param": {
+          "size": 3360,
+          "sha256": "82c04da2d9a894986a78073803546ec75eeaf2e8e5a7d3bef312094aa49db4b1"
+        },
+        "rife-v2/flownet.bin": {
+          "size": 30555792,
+          "sha256": "432c53b8d519f1a7c65813f38fc0e4cb66adc62b166bc6339040cd113c4f30fa"
+        },
+        "rife-v2/flownet.param": {
+          "size": 10178,
+          "sha256": "d6217636d4f71871c721bfea379e99c0df4e4d1446d282427a3939b38aa7fb92"
+        },
+        "rife-v2/fusionnet.bin": {
+          "size": 23686092,
+          "sha256": "10e7a372cef1285fe08421857c0ad3b70e39de98c0573adb2185f0877fdd9cdb"
+        },
+        "rife-v2/fusionnet.param": {
+          "size": 5775,
+          "sha256": "6a33fa5befe657061af4c12390917c51028e609ea3c0e7c1d390fea6a8c4f870"
+        },
+        "rife-v3.0/contextnet.bin": {
+          "size": 2387688,
+          "sha256": "4d235182146dbf7afdc13565719479c09d09431d3e63d9929321b4a87ba9c663"
+        },
+        "rife-v3.0/contextnet.param": {
+          "size": 3360,
+          "sha256": "7826edf4fba7aebcb51c4c6ccb8a10b45f6b8e60e5975ba887220eebffdaa131"
+        },
+        "rife-v3.0/flownet.bin": {
+          "size": 9113436,
+          "sha256": "1df40d94d731f6c53e3cb8a8c818118202788d05a1b21ca921d840459f87b2a2"
+        },
+        "rife-v3.0/flownet.param": {
+          "size": 9609,
+          "sha256": "c115e7a89f7b243da0142e9c77df445c6629cc3883347da23bb8fa74c665ebcb"
+        },
+        "rife-v3.0/fusionnet.bin": {
+          "size": 23686092,
+          "sha256": "bd48e83dfed5b923d299addc483ce90a6a5c2d408012d6408c65a89a71f3bfae"
+        },
+        "rife-v3.0/fusionnet.param": {
+          "size": 5775,
+          "sha256": "6a33fa5befe657061af4c12390917c51028e609ea3c0e7c1d390fea6a8c4f870"
+        },
+        "rife-v3.1/contextnet.bin": {
+          "size": 2387688,
+          "sha256": "e7f406ef6b18fd785933ef44ed62f79d9971846ede790bf1bce7023bb7d33d48"
+        },
+        "rife-v3.1/contextnet.param": {
+          "size": 3360,
+          "sha256": "7826edf4fba7aebcb51c4c6ccb8a10b45f6b8e60e5975ba887220eebffdaa131"
+        },
+        "rife-v3.1/flownet.bin": {
+          "size": 9113436,
+          "sha256": "91de19761bddabe3ee5b114db0df265e24b6fcf74e15c88ce18086b7a4bda950"
+        },
+        "rife-v3.1/flownet.param": {
+          "size": 9609,
+          "sha256": "c115e7a89f7b243da0142e9c77df445c6629cc3883347da23bb8fa74c665ebcb"
+        },
+        "rife-v3.1/fusionnet.bin": {
+          "size": 23686092,
+          "sha256": "e8e78171d1a8dc7a406d37098c7d3130dbc1e1ca0801d84ad1cc23d8ca781271"
+        },
+        "rife-v3.1/fusionnet.param": {
+          "size": 5775,
+          "sha256": "6a33fa5befe657061af4c12390917c51028e609ea3c0e7c1d390fea6a8c4f870"
+        },
+        "rife-v4.6/flownet.bin": {
+          "size": 10614320,
+          "sha256": "f334ed2260149ce0188a6dcf049844e8b0cdd912e01cbcfb63553157d2508958"
+        },
+        "rife-v4.6/flownet.param": {
+          "size": 16749,
+          "sha256": "28df14d57a225725ee5386f52eba422488450d37c9f40800ed4f62e8ba846692"
+        },
+        "rife-v4/flownet.bin": {
+          "size": 10340416,
+          "sha256": "f307230e32bffeaef5d27a1ea48ec4a67371f99e363ffde1f0f62016a1f725b4"
+        },
+        "rife-v4/flownet.param": {
+          "size": 12999,
+          "sha256": "8698b5a482922817ff2be3cd1dbe77dbe39eb7a8ddb2c6d7c0f27b9373bc870a"
+        },
+        "rife/contextnet.bin": {
+          "size": 799760,
+          "sha256": "1d03cf22f74a99d4dc72bdfc8f45d48824f08fb0dd9803238bc3f3430f1b7ce6"
+        },
+        "rife/contextnet.param": {
+          "size": 5506,
+          "sha256": "04d8a0478721feb6aca74cc5126fdba03ad0d21089cc3f681dc9f137952cd852"
+        },
+        "rife/flownet.bin": {
+          "size": 12677784,
+          "sha256": "b0c901adbbe5851a1e033a25b02ea81c3be5129ce7436c59d3b3f236abc45119"
+        },
+        "rife/flownet.param": {
+          "size": 20297,
+          "sha256": "c4b3de01d78698839a51a957a9079ea74d1d11229b45f777219f477fcd44c4d7"
+        },
+        "rife/fusionnet.bin": {
+          "size": 7499380,
+          "sha256": "f8c2541f9b6a0dcfd060b2d17de60c005056c6677beed0ba05aaf209275cac5b"
+        },
+        "rife/fusionnet.param": {
+          "size": 8147,
+          "sha256": "491c992879625e74af4704c4227ead7572a4b60c0a01ed0451a905edbeb8575b"
+        },
+        "vcomp140.dll": {
+          "size": 181680,
+          "sha256": "54fe6b087528b33c2969143d811eb62f1bd49071d37de9db0745fc079764d698"
+        }
+      }
     }
   },
   "models": {

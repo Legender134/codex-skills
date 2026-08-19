@@ -942,7 +942,8 @@ function Invoke-PetToolchainSetup {
             Assert-ExtractorVersion -ExtractorPath $extractor.Path -ExtractorLock $lock.extractor
 
             $toolEntrypoints = [ordered]@{}
-            foreach ($toolKey in @('ffmpeg', 'imagemagick', 'libwebp')) {
+            $toolKeys = @('ffmpeg', 'imagemagick', 'libwebp', 'rife')
+            foreach ($toolKey in $toolKeys) {
                 $entrypoint = Install-LockedTool -StagingRoot $stagingPath -DownloadsRoot $downloadsRoot -ToolKey $toolKey -ToolLock $lock.tools.$toolKey -ExtractorPath $extractor.Path
                 $toolEntrypoints[$toolKey] = [System.IO.Path]::GetRelativePath($stagingPath, $entrypoint).Replace('\', '/')
             }
@@ -974,7 +975,7 @@ function Invoke-PetToolchainSetup {
                 models = $modelEntrypoints
             }
         }
-        foreach ($toolKey in @('ffmpeg', 'imagemagick', 'libwebp')) {
+        foreach ($toolKey in $toolKeys) {
             $installedManifest.assets.tools[$toolKey] = [ordered]@{
                 sha256 = $lock.tools.$toolKey.sha256
                 size = $lock.tools.$toolKey.size

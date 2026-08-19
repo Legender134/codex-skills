@@ -72,7 +72,7 @@ def test_toolchain_overlay_is_complete_and_source_only() -> None:
     assert not [path for path in TEMPLATE.rglob("*") if path.suffix.casefold() in FORBIDDEN_SUFFIXES]
     lock = json.loads((TEMPLATE / "tools/pet-toolchain.lock.json").read_text(encoding="utf-8"))
     assert set(lock["models"]) == {"isnet-anime", "u2net_human_seg"}
-    assert set(lock["tools"]) == {"ffmpeg", "imagemagick", "libwebp"}
+    assert set(lock["tools"]) == {"ffmpeg", "imagemagick", "libwebp", "rife"}
 
     for relative_path in EXPECTED_TOOLCHAIN_FILES:
         text = (TEMPLATE / relative_path).read_bytes().decode("utf-8", errors="strict")

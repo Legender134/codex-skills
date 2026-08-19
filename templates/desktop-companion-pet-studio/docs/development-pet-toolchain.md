@@ -4,10 +4,11 @@
 
 ## 1. Purpose and non-goals
 
-工具链把 FFmpeg、ImageMagick、libwebp、独立的 Python 3.12 媒体环境和两个 rembg ONNX 模型放在用户本机的隔离工具根中。它可以完成：
+工具链把 FFmpeg、ImageMagick、libwebp、RIFE、独立的 Python 3.12 媒体环境和两个 rembg ONNX 模型放在用户本机的隔离工具根中。RIFE 固定为官方 nihui/rife-ncnn-vulkan 20221029 Windows 包，并使用包内的 rife-anime 模型。它可以完成：
 
 - 从素材或预览中抽帧、检查尺寸/颜色/透明度、运行 OpenCV 边界检查；
 - 对 isnet-anime 和 u2net_human_seg 都运行真实的本地抠图 smoke；
+- 用两张确定性输入帧运行真实 RIFE 中间帧插值，并确认输出尺寸正确且不同于两张输入；
 - 使用 cwebp 生成透明 WebP，并用 Pillow 与 PySide6/Qt 交叉解码；
 - 在所有门禁通过后，以 lock digest 发布一个不可变版本。
 
@@ -70,7 +71,7 @@ setup 的默认 lock/requirements 路径相对于 [setup script](../scripts/setu
 
 1. 严格读取 lock 和 hash requirements，以两份文件原始字节的 SHA-256 计算 lock digest；
 2. 下载到 ToolRoot 的 downloads，每次 cache hit 仍检查大小和 SHA-256；
-3. 只在 staging-<32 hex> 目录中解压、建 venv、安装两个模型并写 installed.json；
+3. 只在 staging-<32 hex> 目录中解压四个工具、建 venv、安装两个 rembg 模型并写 installed.json；
 4. 对 staging 候选调用 verify，再把 staging 移到 versions\<digest>，对最终版本再次调用 verify；
 5. 只有两次验证都通过，才 flush current.json.tmp.<32 hex> 并原子替换 current.json。
 
@@ -91,7 +92,7 @@ setup 的默认 lock/requirements 路径相对于 [setup script](../scripts/setu
 PET TOOLCHAIN VERIFIED
 ~~~
 
-门禁顺序包括 lock schema/digest、installed manifest、三工具完整文件 inventory、两个模型哈希、Python 文件树和 PSF publisher、FFmpeg/ffprobe/ImageMagick/libwebp 版本输出、Python freeze、真实媒体 smoke 和 Qt WebP smoke。media helper（[tools/verify_pet_media.py](../tools/verify_pet_media.py)）在临时目录生成确定性 source/cutout/preview/result 文件，真实调用 Pillow、rembg、OpenCV、FFmpeg、ImageMagick 和 cwebp；随后 -QtPython 运行 [Qt helper](../tools/verify_qt_webp.py)，检查同一个 WebP 的尺寸、alpha 0/255 和 JSON 结果。临时目录含未知文件、重解析点或锁定文件时，验证会失败而不扩大清理范围。
+门禁顺序包括 lock schema/digest、installed manifest、四工具完整文件 inventory、两个 rembg 模型哈希、Python 文件树和 PSF publisher、FFmpeg/ffprobe/ImageMagick/libwebp 版本输出、RIFE 锁定命令接口、Python freeze、真实媒体 smoke 和 Qt WebP smoke。media helper（[tools/verify_pet_media.py](../tools/verify_pet_media.py)）在临时目录生成确定性 source/cutout/preview/RIFE 中间帧/result 文件，真实调用 Pillow、rembg、OpenCV、FFmpeg、ImageMagick、cwebp 和 RIFE；随后 -QtPython 运行 [Qt helper](../tools/verify_qt_webp.py)，检查同一个 WebP 的尺寸、alpha 0/255 和 JSON 结果。临时目录含未知文件、重解析点或锁定文件时，验证会失败而不扩大清理范围。
 
 验证 alternate candidate 时必须显式同时传 root、candidate 和 -NoCurrentPointer；-NoCurrentPointer 没有 -CandidateRoot 会被拒绝：
 
@@ -109,10 +110,11 @@ $candidate = Join-Path $toolRoot 'versions\<lockDigest>'
 
 ## 6. Lock contents and supply-chain updates
 
-[tools/pet-toolchain.lock.json](../tools/pet-toolchain.lock.json) 的 lock digest 同时覆盖 [requirements/pet-media.txt](../requirements/pet-media.txt)；任何一处改变都会产生新的版本目录。锁定内容不是只有三个入口文件：
+[tools/pet-toolchain.lock.json](../tools/pet-toolchain.lock.json) 的 lock digest 同时覆盖 [requirements/pet-media.txt](../requirements/pet-media.txt)；任何一处改变都会产生新的版本目录。锁定内容不是只有四个入口文件：
 
 - extractor 是官方 7-Zip 下载页声明的 7zr.exe bootstrap，版本 26.02，固定 GitHub release URL、大小、SHA-256 和完整版本正则。setup 先校验它，再用它检查和提取 FFmpeg .7z；它不是 PATH 上任意的 7z。
-- ffmpeg、imagemagick、libwebp 三个 tool record 都有 installedFiles 完整 inventory。当前 lock 分别列出 FFmpeg 45 个、ImageMagick 23 个、libwebp 26 个解压后文件；inventory 包含入口（FFmpeg 还包含 bin/ffprobe.exe）以及其余随包文件的相对路径、大小和 SHA-256。verify 在执行版本命令前拒绝任何 missing 或 unexpected 文件，不能只凭入口存在就放行。
+- ffmpeg、imagemagick、libwebp、rife 四个 tool record 都有 installedFiles 完整 inventory。当前 lock 分别列出 FFmpeg 45 个、ImageMagick 23 个、libwebp 26 个、RIFE 62 个解压后文件；inventory 包含入口（FFmpeg 还包含 bin/ffprobe.exe，RIFE 还包含全部随包模型目录）以及其余随包文件的相对路径、大小和 SHA-256。verify 在执行任何工具前拒绝 missing 或 unexpected 文件，不能只凭入口存在就放行。
+- RIFE 不提供稳定的版本输出，所以 lock 同时固定官方 release/source URL、归档大小和 SHA-256、完整安装 inventory、rife-ncnn-vulkan.exe 的 Usage 接口正则以及直接子目录 rife-anime；verify 明确接受其帮助命令的 -1 退出码，随后仍必须通过真实两帧插值 smoke。
 - pythonRuntime 要求 Python 3.12，并要求上面列出的 Python Software Foundation Authenticode publisher；已安装 manifest 还记录 freeze、Python tree fileCount/treeSha256、runtimeVersion 和 runtimePublisher。
 - models 固定且同时验证 isnet-anime 与 u2net_human_seg 两个 ONNX 文件的官方 URL、大小、SHA-256 和 models/... entrypoint。两者都会参与真实 rembg smoke，不是只下载备用文件。
 
@@ -132,7 +134,7 @@ pip-compile --generate-hashes --no-emit-index-url --no-emit-trusted-host --outpu
 - v3 是普通新建单形态、单图集、动作和帧数可动态扩展宠物的默认路线；少量动作不构成选择 v4 的理由。
 - v4 只在需求包含多图集分层、身体外宽特效、full/simplified 质量、多 form、transform、sequence、安全停止/恢复或 bucket/shared-cooldown autoplay 等运行时能力时采用。
 
-三种格式都可复用同一媒体门禁：FFmpeg 抽帧，ImageMagick/Pillow 检查尺寸、颜色和 alpha，两个模型的 rembg 本地抠图，OpenCV 检查边界，cwebp 编码透明 WebP，最后 Pillow 和 Qt 双解码。工具链通过后仍要按版本格式文档和 skill 的 Registry-to-Catalog、运行时、视觉自审门禁完成宠物包，不把 media smoke 当作角色身份或动作正确性的替代证据。可继续阅读 [添加新宠物指南](添加新宠物指南.md)、[v2](pet-pack-format-v2.md)、[v3](pet-pack-format-v3.md) 和 [v4](pet-pack-format-v4.md) 格式文档。
+三种格式都可复用同一媒体门禁：FFmpeg 抽帧，ImageMagick/Pillow 检查尺寸、颜色和 alpha，两个模型的 rembg 本地抠图，OpenCV 检查边界，cwebp 编码透明 WebP，RIFE/rife-anime 验证两帧间的真实中间帧插值，最后 Pillow 和 Qt 双解码。工具链通过后仍要按版本格式文档和 skill 的 Registry-to-Catalog、运行时、视觉自审门禁完成宠物包，不把 media smoke 当作角色身份或动作正确性的替代证据。可继续阅读 [添加新宠物指南](添加新宠物指南.md)、[v2](pet-pack-format-v2.md)、[v3](pet-pack-format-v3.md) 和 [v4](pet-pack-format-v4.md) 格式文档。
 
 ## 8. Exact Codex trust and Git safe.directory policy
 

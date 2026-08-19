@@ -14,6 +14,7 @@ import uuid
 
 
 IMAGE_SIZE = 256
+RIFE_IMAGE_SIZE = 64
 MODEL_NAMES = ("isnet-anime", "u2net_human_seg")
 ALPHA_CHANNEL_DESCRIPTIONS = {
     "rgba 4.0",
@@ -433,6 +434,55 @@ def verify_preview(image_module: Any, image_draw: Any, ffmpeg: Path, ffprobe: Pa
     return {"frames": 4, "durationSeconds": duration}
 
 
+def verify_rife_interpolation(
+    image_module: Any,
+    image_draw: Any,
+    rife: Path,
+    rife_model: Path,
+    work_dir: Path,
+) -> dict[str, Any]:
+    first_path = new_output_path(work_dir, "rife-first.png", "RIFE first input")
+    second_path = new_output_path(work_dir, "rife-second.png", "RIFE second input")
+    output_path = new_output_path(work_dir, "rife-mid.png", "RIFE midpoint output")
+    first = image_module.new("RGB", (RIFE_IMAGE_SIZE, RIFE_IMAGE_SIZE), (0, 0, 0))
+    second = image_module.new("RGB", (RIFE_IMAGE_SIZE, RIFE_IMAGE_SIZE), (0, 0, 0))
+    image_draw.Draw(first).rectangle((8, 20, 24, 36), fill=(255, 255, 255))
+    image_draw.Draw(second).rectangle((40, 20, 56, 36), fill=(255, 255, 255))
+    first.save(first_path, format="PNG")
+    second.save(second_path, format="PNG")
+    run_external(
+        [
+            str(rife),
+            "-0",
+            str(first_path),
+            "-1",
+            str(second_path),
+            "-o",
+            str(output_path),
+            "-m",
+            str(rife_model),
+            "-g",
+            "-1",
+        ]
+    )
+    if not output_path.is_file() or is_reparse_point(output_path):
+        raise VerificationError("RIFE did not create a regular midpoint output")
+    with image_module.open(output_path) as midpoint:
+        midpoint.load()
+        if midpoint.size != (RIFE_IMAGE_SIZE, RIFE_IMAGE_SIZE):
+            raise VerificationError("RIFE midpoint has unexpected dimensions")
+        midpoint_fingerprint = frame_fingerprint(midpoint)
+    input_fingerprints = {frame_fingerprint(first), frame_fingerprint(second)}
+    if midpoint_fingerprint in input_fingerprints:
+        raise VerificationError("RIFE midpoint is not distinct from both inputs")
+    return {
+        "relativePath": output_path.name,
+        "width": RIFE_IMAGE_SIZE,
+        "height": RIFE_IMAGE_SIZE,
+        "distinctFromInputs": True,
+    }
+
+
 def write_result_atomically(result_path: Path, work_dir: Path, result: dict[str, Any]) -> None:
     if result_path.exists() or result_path.is_symlink():
         raise VerificationError("result JSON path must be new")
@@ -496,6 +546,8 @@ def verify_media(arguments: argparse.Namespace) -> dict[str, Any]:
     ffprobe = resolve_regular_file(arguments.ffprobe, "ffprobe executable")
     magick = resolve_regular_file(arguments.magick, "ImageMagick executable")
     cwebp = resolve_regular_file(arguments.cwebp, "cwebp executable")
+    rife = resolve_regular_file(arguments.rife, "RIFE executable")
+    rife_model = resolve_existing_directory(arguments.rife_model, "RIFE model directory")
     os.environ["U2NET_HOME"] = str(models_root)
     if arguments.numba_cache_dir is None:
         numba_cache_root = work_dir
@@ -545,6 +597,9 @@ def verify_media(arguments: argparse.Namespace) -> dict[str, Any]:
     verify_identify(magick, primary_cutout)
     webp_result = verify_webp(image_module, cwebp, primary_cutout, new_output_path(work_dir, "cutout-isnet-anime.webp", "cutout WebP"))
     preview_result = verify_preview(image_module, image_draw, ffmpeg, ffprobe, primary_cutout, work_dir)
+    interpolation_result = verify_rife_interpolation(
+        image_module, image_draw, rife, rife_model, work_dir
+    )
     result = {
         "schemaVersion": 1,
         "tools": {
@@ -552,7 +607,10 @@ def verify_media(arguments: argparse.Namespace) -> dict[str, Any]:
             "magick": read_version(magick), "cwebp": read_version(cwebp),
         },
         "source": {"width": IMAGE_SIZE, "height": IMAGE_SIZE, "opencvBounds": bounds},
-        "models": model_results, "webp": webp_result, "preview": preview_result,
+        "models": model_results,
+        "webp": webp_result,
+        "preview": preview_result,
+        "interpolation": interpolation_result,
     }
     write_result_atomically(result_path, work_dir, result)
     return result
@@ -565,6 +623,8 @@ def parse_arguments(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--ffprobe", required=True)
     parser.add_argument("--magick", required=True)
     parser.add_argument("--cwebp", required=True)
+    parser.add_argument("--rife", required=True)
+    parser.add_argument("--rife-model", required=True)
     parser.add_argument("--work-dir", required=True)
     parser.add_argument("--result-json", required=True)
     parser.add_argument("--numba-cache-dir")

@@ -462,18 +462,46 @@ function Read-PetToolchainLock {
     ) -Context 'extractor'
     Assert-LockAsset -Asset $lock.extractor -Context 'extractor' -RequireVersionRegex -RequireAuthenticode
 
-    Assert-ExactObjectKeys -Object $lock.tools -Expected @('ffmpeg', 'imagemagick', 'libwebp') -Context 'tools'
-    foreach ($toolName in @('ffmpeg', 'imagemagick', 'libwebp')) {
+    $toolNames = @('ffmpeg', 'imagemagick', 'libwebp', 'rife')
+    Assert-ExactObjectKeys -Object $lock.tools -Expected $toolNames -Context 'tools'
+    foreach ($toolName in $toolNames) {
         $tool = $lock.tools.$toolName
         $expectedKeys = @(
-            'version', 'sourcePage', 'url', 'size', 'sha256', 'entrypoint', 'versionRegex', 'authenticode',
-            'installedFiles'
+            'version', 'sourcePage', 'url', 'size', 'sha256', 'entrypoint', 'authenticode', 'installedFiles'
         )
         if ($toolName -ceq 'ffmpeg') {
-            $expectedKeys += 'probeEntrypoint'
+            $expectedKeys += @('versionRegex', 'probeEntrypoint')
+        }
+        elseif ($toolName -ceq 'rife') {
+            $expectedKeys += @('usageRegex', 'modelDirectory')
+        }
+        else {
+            $expectedKeys += 'versionRegex'
         }
         Assert-ExactObjectKeys -Object $tool -Expected $expectedKeys -Context "tool $toolName"
-        Assert-LockAsset -Asset $tool -Context "tool $toolName" -RequireVersionRegex -RequireAuthenticode
+        if ($toolName -ceq 'rife') {
+            Assert-LockAsset -Asset $tool -Context "tool $toolName" -RequireAuthenticode
+            if ([string]::IsNullOrWhiteSpace([string]$tool.usageRegex)) {
+                throw 'Missing usageRegex for tool rife'
+            }
+            try {
+                $null = [System.Text.RegularExpressions.Regex]::new([string]$tool.usageRegex)
+            }
+            catch {
+                throw 'Invalid usageRegex for tool rife'
+            }
+            $modelDirectory = [string]$tool.modelDirectory
+            $safeModelDirectory = Assert-SafeArchivePath -EntryName $modelDirectory
+            if ([string]::IsNullOrWhiteSpace($modelDirectory) -or
+                $modelDirectory.Contains('/') -or
+                $modelDirectory.Contains('\') -or
+                $safeModelDirectory -cne $modelDirectory) {
+                throw 'RIFE modelDirectory must be a safe direct child directory'
+            }
+        }
+        else {
+            Assert-LockAsset -Asset $tool -Context "tool $toolName" -RequireVersionRegex -RequireAuthenticode
+        }
         if ($toolName -ceq 'ffmpeg') {
             $null = Assert-SafeArchivePath -EntryName ([string]$tool.probeEntrypoint)
         }
