@@ -283,27 +283,108 @@ Copy only the eleven files listed in this task. Compare size/SHA-256 for every b
 
 - [ ] **Step 3: Apply only the paired path sanitization**
 
-Operate only on the copied operator guide and copied contract test. Identify an
-absolute Windows interpreter string with this public path-shape predicate; it matches
-an absolute drive path whose suffix is
-`yinyue-v4-runtime\.venv\Scripts\python.exe`, without embedding a username or a
-private source path:
+Operate only on the copied operator guide and copied contract test. The pinned guide
+contains normal physical Windows spellings (backslash and forward-slash separators),
+while the pinned Python contract test also contains doubled/escaped backslashes inside
+source fixtures. Match whole absolute home paths with two public, deterministic
+predicates: a normal-form predicate for `drive:(\ or /)Users(\ or /)<redacted>` and
+an escaped-form predicate for `drive:\\Users\\<redacted>`. Neither predicate embeds
+a username or private source path. The allowed public tails are specified in the
+replacement function below; they include the interpreter tail
+`Documents/desktop-companion-worktrees/yinyue-v4-runtime/.venv/Scripts/python.exe`
+and the short temporary-root tail `AppData/Local/DCPR-00000000`.
+
+The allow-list has exactly five public tails: the interpreter and temporary-root
+tails above, the two checkout roots, and the local Codex configuration filename. It
+cannot match an arbitrary home-directory path.
+
 
 ```powershell
-$sanitizationPattern = '(?i)\b[A-Z]:\\(?:[^\\\r\n]+\\)*yinyue-v4-runtime\\\.venv\\Scripts\\python\.exe\b'
-$genericQtPython = 'C:\path\to\PySide6\python.exe'
-$sanitizationFiles = @(
-  'templates/desktop-companion-pet-studio/docs/development-pet-toolchain.md',
-  'templates/desktop-companion-pet-studio/tests/test_pet_toolchain_contract.py'
+$normalGenericQtPython = 'C:\path\to\PySide6\python.exe'
+$escapedGenericQtPython = 'C:\\path\\to\\PySide6\\python.exe'
+$normalPrivatePathPattern = '(?ix)\b[A-Z]:(?<separator>\\|/)Users\k<separator>[^\\/\r\n]+(?:\k<separator>Documents\k<separator>desktop-companion-worktrees\k<separator>yinyue-v4-runtime\k<separator>\.venv\k<separator>Scripts\k<separator>python\.exe|\k<separator>Documents\k<separator>desktop-companion-worktrees\k<separator>yinyue-v4-runtime|\k<separator>Documents\k<separator>desktop-companion|\k<separator>AppData\k<separator>Local\k<separator>DCPR-00000000|\k<separator>\.codex\k<separator>config\.toml)\b'
+$escapedPrivatePathPattern = '(?ix)\b[A-Z]:\\{2}Users\\{2}[^\\/\r\n]+(?:\\{2}Documents\\{2}desktop-companion-worktrees\\{2}yinyue-v4-runtime\\{2}\.venv\\{2}Scripts\\{2}python\.exe|\\{2}Documents\\{2}desktop-companion-worktrees\\{2}yinyue-v4-runtime|\\{2}Documents\\{2}desktop-companion)\b'
+$normalUserPrefixPattern = '(?i)C:(?:\\|/)Users(?:\\|/)'
+$escapedUserPrefixPattern = '(?i)C:\\{2}Users\\{2}'
+
+function Get-PublicPathReplacement {
+  param([string]$MatchText, [bool]$Escaped)
+
+  $slash = [string][char]92
+  $doubledSlash = $slash + $slash
+  $canonical = $MatchText.Replace($doubledSlash, $slash).Replace('/', $slash).ToLowerInvariant()
+  if ($canonical.EndsWith($slash + 'documents' + $slash + 'desktop-companion-worktrees' + $slash + 'yinyue-v4-runtime' + $slash + '.venv' + $slash + 'scripts' + $slash + 'python.exe')) { $kind = 'qt' }
+  elseif ($canonical.EndsWith($slash + 'documents' + $slash + 'desktop-companion-worktrees' + $slash + 'yinyue-v4-runtime')) { $kind = 'worktree' }
+  elseif ($canonical.EndsWith($slash + 'documents' + $slash + 'desktop-companion')) { $kind = 'project' }
+  elseif ($canonical.EndsWith($slash + 'appdata' + $slash + 'local' + $slash + 'dcpr-00000000')) { $kind = 'short-tool-root' }
+  elseif ($canonical.EndsWith($slash + '.codex' + $slash + 'config.toml')) { $kind = 'codex-config' }
+  else { throw 'Matched an unauthorized private path shape' }
+
+  if ($Escaped) {
+    switch ($kind) {
+      'qt' { return 'C:\\path\\to\\PySide6\\python.exe' }
+      'worktree' { return 'c:\\path\\to\\desktop-companion-worktrees\\yinyue-v4-runtime' }
+      'project' { return 'c:\\path\\to\\desktop-companion' }
+      default { throw 'No escaped replacement is defined for this path shape' }
+    }
+  }
+
+  if ($kind -eq 'codex-config') { return '%USERPROFILE%\.codex\config.toml' }
+  $usesForwardSlash = $MatchText.Contains('/')
+  switch ($kind) {
+    'qt' { if ($usesForwardSlash) { return 'C:/path/to/PySide6/python.exe' }; return 'C:\path\to\PySide6\python.exe' }
+    'worktree' { if ($usesForwardSlash) { return 'C:/path/to/desktop-companion-worktrees/yinyue-v4-runtime' }; return 'c:\path\to\desktop-companion-worktrees\yinyue-v4-runtime' }
+    'project' { if ($usesForwardSlash) { return 'C:/path/to/desktop-companion' }; return 'c:\path\to\desktop-companion' }
+    'short-tool-root' { if ($usesForwardSlash) { return 'C:/generic/desktop-companion/DCPR-00000000' }; return 'C:\generic\desktop-companion\DCPR-00000000' }
+    default { throw 'No normal replacement is defined for this path shape' }
+  }
+}
+
+$sanitizationCases = @(
+  [pscustomobject]@{
+    Path = 'templates/desktop-companion-pet-studio/docs/development-pet-toolchain.md'
+    ExpectedNormalMatches = 9
+    ExpectedEscapedMatches = 0
+  },
+  [pscustomobject]@{
+    Path = 'templates/desktop-companion-pet-studio/tests/test_pet_toolchain_contract.py'
+    ExpectedNormalMatches = 4
+    ExpectedEscapedMatches = 4
+  }
 )
-foreach ($path in $sanitizationFiles) {
+foreach ($case in $sanitizationCases) {
+  $path = $case.Path
   $text = [IO.File]::ReadAllText($path, [Text.UTF8Encoding]::new($false, $true))
-  if ([regex]::Matches($text, $sanitizationPattern).Count -lt 1) {
-    throw "Expected at least one reviewed local Qt Python path in $path"
+  $normalMatches = [regex]::Matches($text, $normalPrivatePathPattern)
+  $escapedMatches = [regex]::Matches($text, $escapedPrivatePathPattern)
+  if ($normalMatches.Count -ne $case.ExpectedNormalMatches -or
+      $escapedMatches.Count -ne $case.ExpectedEscapedMatches) {
+    throw "Unexpected reviewed-path match counts in $path"
+  }
+  $updated = [regex]::Replace($text, $normalPrivatePathPattern, {
+    param($match) Get-PublicPathReplacement -MatchText $match.Value -Escaped $false
+  })
+  $updated = [regex]::Replace($updated, $escapedPrivatePathPattern, {
+    param($match) Get-PublicPathReplacement -MatchText $match.Value -Escaped $true
+  })
+  if ([regex]::IsMatch($updated, $normalPrivatePathPattern) -or
+      [regex]::IsMatch($updated, $escapedPrivatePathPattern) -or
+      [regex]::IsMatch($updated, $normalUserPrefixPattern) -or
+      [regex]::IsMatch($updated, $escapedUserPrefixPattern)) {
+    throw "A normal or doubled/escaped C:\\Users\\ home-path spelling remains in $path"
+  }
+  if ($case.Path -like '*development-pet-toolchain.md' -and
+      [regex]::Matches($updated, [regex]::Escape($normalGenericQtPython)).Count -lt 2) {
+    throw "The normal generic Qt Python replacement is missing in $path"
+  }
+  if ($case.Path -like '*test_pet_toolchain_contract.py' -and
+      ([regex]::Matches($updated, [regex]::Escape($normalGenericQtPython)).Count -lt 1 -or
+       [regex]::Matches($updated, [regex]::Escape($escapedGenericQtPython)).Count -lt 2)) {
+    throw "A generic Qt Python replacement is missing in $path"
   }
   [IO.File]::WriteAllText(
     $path,
-    [regex]::Replace($text, $sanitizationPattern, $genericQtPython),
+    $updated,
     [Text.UTF8Encoding]::new($false)
   )
 }
@@ -311,9 +392,13 @@ foreach ($path in $sanitizationFiles) {
 
 Require these postconditions before continuing:
 
-- the same predicate has zero matches in both sanitization files;
-- neither sanitization file contains `C:\Users\`;
-- `C:\path\to\PySide6\python.exe` occurs in both sanitization files; and
++ the documented precondition counts are guide: nine normal and zero escaped;
+  contract test: four normal and four escaped;
++ both private-path predicates and both normal/doubled `C:\Users\`
+  user-home prefix predicates have zero residual matches in both sanitization files;
++ the normal generic Qt path is present at least twice in the guide and once in the
+  contract test, while its doubled/escaped physical spelling is present at least
+  twice in the contract test; and
 - the following eight production artifacts remain byte-identical to `$source`:
   `requirements/pet-media.in`, `requirements/pet-media.txt`,
   `scripts/pet_toolchain_common.ps1`, `scripts/setup_pet_toolchain.ps1`,
@@ -321,7 +406,9 @@ Require these postconditions before continuing:
   `tools/verify_pet_media.py`, and `tools/verify_qt_webp.py`.
 
 Do not search for or copy a username/private source string, and do not change any
-other copied file.
+other copied file. This is the exact paired-path phase that produced the clean
+public paths in the candidate guide and Python fixture; separately specified
+portability edits to those files remain governed by their own task steps.
 
 - [ ] **Step 4: Add portability scans**
 
