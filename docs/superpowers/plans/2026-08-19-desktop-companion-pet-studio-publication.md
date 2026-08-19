@@ -283,13 +283,45 @@ Copy only the eleven files listed in this task. Compare size/SHA-256 for every b
 
 - [ ] **Step 3: Apply only the paired path sanitization**
 
-In the copied operator guide and copied contract test, replace every instance of the reviewed local Qt Python path with:
+Operate only on the copied operator guide and copied contract test. Identify an
+absolute Windows interpreter string with this public path-shape predicate; it matches
+an absolute drive path whose suffix is
+`yinyue-v4-runtime\.venv\Scripts\python.exe`, without embedding a username or a
+private source path:
 
-```text
-C:\path\to\PySide6\python.exe
+```powershell
+$sanitizationPattern = '(?i)\b[A-Z]:\\(?:[^\\\r\n]+\\)*yinyue-v4-runtime\\\.venv\\Scripts\\python\.exe\b'
+$genericQtPython = 'C:\path\to\PySide6\python.exe'
+$sanitizationFiles = @(
+  'templates/desktop-companion-pet-studio/docs/development-pet-toolchain.md',
+  'templates/desktop-companion-pet-studio/tests/test_pet_toolchain_contract.py'
+)
+foreach ($path in $sanitizationFiles) {
+  $text = [IO.File]::ReadAllText($path, [Text.UTF8Encoding]::new($false, $true))
+  if ([regex]::Matches($text, $sanitizationPattern).Count -lt 1) {
+    throw "Expected at least one reviewed local Qt Python path in $path"
+  }
+  [IO.File]::WriteAllText(
+    $path,
+    [regex]::Replace($text, $sanitizationPattern, $genericQtPython),
+    [Text.UTF8Encoding]::new($false)
+  )
+}
 ```
 
-Do not change production scripts, locks, requirements, or verifier helpers.
+Require these postconditions before continuing:
+
+- the same predicate has zero matches in both sanitization files;
+- neither sanitization file contains `C:\Users\`;
+- `C:\path\to\PySide6\python.exe` occurs in both sanitization files; and
+- the following eight production artifacts remain byte-identical to `$source`:
+  `requirements/pet-media.in`, `requirements/pet-media.txt`,
+  `scripts/pet_toolchain_common.ps1`, `scripts/setup_pet_toolchain.ps1`,
+  `scripts/verify_pet_toolchain.ps1`, `tools/pet-toolchain.lock.json`,
+  `tools/verify_pet_media.py`, and `tools/verify_qt_webp.py`.
+
+Do not search for or copy a username/private source string, and do not change any
+other copied file.
 
 - [ ] **Step 4: Add portability scans**
 
