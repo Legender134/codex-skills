@@ -12,6 +12,14 @@ This directory is an overlay, not a standalone project. Copy its contents, inclu
 
 The project profile uses `gpt-5.6-sol` with `xhigh` reasoning for the primary agent. Bounded delegated work uses `gpt-5.6-terra` with `max` reasoning, and the one-child cap keeps `max_concurrent_threads_per_session` at `1`. If either model name is unavailable for the local account, change it locally after copying the overlay.
 
+The overlay also installs three version-neutral project agents under `.codex/agents/`:
+
+- `pet_researcher` uses `gpt-5.6-luna` with `max` reasoning in read-only mode to inventory source capabilities, recommend v2/v3/v4, and record format confirmation.
+- `pet_builder` uses `gpt-5.6-terra` with `max` reasoning and workspace-write access to build only the confirmed package version.
+- `pet_reviewer` uses `gpt-5.6-sol` with `xhigh` reasoning in read-only mode to review the selected version independently.
+
+These agents follow the separately installed `crafting-desktop-companion-pets` Skill and its handoff contracts. The overlay intentionally contains no project-local pet Skill; install the global Skill first, then restart or reload Codex after copying the overlay.
+
 The project config contains portable behavior only. Codex trust remains user-global and path-specific: add trust only for the exact local checkout path in the user configuration, never for a parent directory or wildcard, and never add a `[projects]` section to this overlay. Likewise, add only the exact checkout path to Git's global safe-directory list; do not use `safe.directory=*`:
 
 ```powershell

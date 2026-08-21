@@ -29,6 +29,11 @@ EXPECTED_TOOLCHAIN_FILES = {
     "tools/verify_pet_media.py",
     "tools/verify_qt_webp.py",
 }
+EXPECTED_PROJECT_AGENT_FILES = {
+    ".codex/agents/pet-builder.toml",
+    ".codex/agents/pet-researcher.toml",
+    ".codex/agents/pet-reviewer.toml",
+}
 FORBIDDEN_SUFFIXES = {".exe", ".dll", ".onnx", ".whl", ".zip", ".7z", ".tar", ".gz"}
 GENERIC_QT_PYTHON = r"C:\path\to\PySide6\python.exe"
 PRIVATE_KEY_HEADER = re.compile(
@@ -64,6 +69,57 @@ def test_project_profile_routes_models_without_machine_trust() -> None:
     assert config["agents"]["default_subagent_model"] == "gpt-5.6-terra"
     assert config["agents"]["default_subagent_reasoning_effort"] == "max"
     assert "projects" not in config
+
+
+def test_project_profile_publishes_version_neutral_pet_agents() -> None:
+    files = relative_files(TEMPLATE)
+    assert EXPECTED_PROJECT_AGENT_FILES <= files
+    assert not (TEMPLATE / ".agents").exists()
+
+    expected = {
+        "pet-researcher.toml": ("pet_researcher", "gpt-5.6-luna", "max", "read-only"),
+        "pet-builder.toml": ("pet_builder", "gpt-5.6-terra", "max", "workspace-write"),
+        "pet-reviewer.toml": ("pet_reviewer", "gpt-5.6-sol", "xhigh", "read-only"),
+    }
+    for filename, (name, model, effort, sandbox) in expected.items():
+        path = TEMPLATE / ".codex" / "agents" / filename
+        agent = tomllib.loads(path.read_text(encoding="utf-8"))
+        instructions = agent["developer_instructions"]
+        assert agent["name"] == name
+        assert agent["model"] == model
+        assert agent["model_reasoning_effort"] == effort
+        assert agent["sandbox_mode"] == sandbox
+        assert "crafting-desktop-companion-pets" in instructions
+        assert all(version in instructions for version in ("v2", "v3", "v4"))
+
+    researcher = tomllib.loads(
+        (TEMPLATE / ".codex" / "agents" / "pet-researcher.toml").read_text(
+            encoding="utf-8"
+        )
+    )["developer_instructions"]
+    for field in (
+        "SOURCE_CAPABILITY_INVENTORY",
+        "VERSION_RECOMMENDATION",
+        "FORMAT_CONFIRMATION",
+        "ACTION_FORM_CONTRACT",
+    ):
+        assert field in researcher
+
+    builder = tomllib.loads(
+        (TEMPLATE / ".codex" / "agents" / "pet-builder.toml").read_text(
+            encoding="utf-8"
+        )
+    )["developer_instructions"]
+    for field in ("SELECTED_INPUTS", "SCOPE", "OUTPUTS", "VALIDATION", "UNVERIFIED"):
+        assert field in builder
+
+    reviewer = tomllib.loads(
+        (TEMPLATE / ".codex" / "agents" / "pet-reviewer.toml").read_text(
+            encoding="utf-8"
+        )
+    )["developer_instructions"]
+    for field in ("VALIDATED", "BLOCKERS", "FINDINGS", "MINIMUM_REWORK", "LIMITATIONS"):
+        assert field in reviewer
 
 
 def test_toolchain_overlay_is_complete_and_source_only() -> None:
