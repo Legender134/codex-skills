@@ -1,61 +1,57 @@
 ---
 name: crafting-desktop-companion-pets
-description: Use when creating, repairing, reviewing, validating, or packaging a pet for this user's DesktopCompanion software, including its v2 fixed-atlas packs, v3 single-form packs, or v4 layered and multiform packs; not for generic Codex animated pets.
+description: Use when creating, repairing, reviewing, validating, or packaging a source-faithful character or pet for this user's DesktopCompanion software; not for generic Codex animated pets.
 ---
 
 # Crafting DesktopCompanion Pets
 
-Research the character first, recommend the format that best preserves the requested source fidelity, and obtain user confirmation before locking the package version. After confirmation, build the smallest valid DesktopCompanion package that preserves that agreed fidelity. Runtime correctness and visual acceptance are separate gates; neither substitutes for the other.
+Use the Nangong Wan/南宫婉 pet as the mandatory quality baseline for source-faithful characters. Copy its evidence discipline, production order, separate visual/runtime gates, causal repair, long-use calibration, and stopping logic. Derive each new character's identity, actions, effects, frames, timings, distances, and scheduling from that character's own evidence.
 
-## Research and confirm before producing assets
+## Required references
 
-1. For an existing package, identify the exact target directory, its declared format, manifest-to-asset mappings, approved assets, and unrelated dirty work. Inspect only that evidence and references explicitly named by the target; never borrow values from neighboring experiments. Preserve the detected format for repair; if source research reveals that faithful restoration requires migration, recommend the migration and obtain user confirmation before changing versions.
-2. For a new package: Research source material before recommending a format. Do not rely on the user's memory alone: inventory observed and plausible forms, transformations, actions, gaze, layered or wide effects, quality variants, sequences, restoration needs, and autoplay relationships that could affect the format choice.
-3. Treat research as sufficient for a recommendation only when distinctive source behaviors likely to affect the version are covered, observations are separated from uncertainty, and any remaining uncertainty that could change the route is stated. Continue accessible research when it can resolve such uncertainty; otherwise compare the affected routes explicitly.
-4. Present a recommendation that names the preferred version, the source evidence and runtime features supporting it, the fidelity each viable route preserves or omits, production complexity, future extensibility, and unresolved uncertainty. Prioritize faithful restoration of the source over convenience, then recommend the least complex version that preserves that fidelity.
-5. Present the format recommendation and obtain user confirmation before locking v2, v3, or v4. An initial version preference is evidence, not confirmation. For a new package, only an explicit user choice made after the research-backed recommendation satisfies `FORMAT_CONFIRMATION`; time pressure or a request to skip questions does not waive this gate. Before confirmation, research and evidence boards may proceed, but do not lock the manifest schema, final action/form contract, atlas architecture, or begin batch asset production.
-6. After confirmation, route by required runtime features, never by action count:
+1. **Always read [nangong-wan-quality-standard.md](references/nangong-wan-quality-standard.md) first** for a new character, major action expansion, or visual-quality repair. It is the default method, not an optional analogous case.
+2. Read [production-and-qa.md](references/production-and-qa.md) while producing actions, frames, atlases, behavior, reviews, or handoffs.
+3. Read [format-runtime-core.md](references/format-runtime-core.md) when selecting/migrating a format or validating v2/v3/v4 and the real runtime.
 
-| Route | Select when |
+Use [research-brief.md](templates/research-brief.md), [action-contract.md](templates/action-contract.md), and [review-checklist.md](templates/review-checklist.md) when equivalent project records do not already exist. A record is equivalent only if it captures the Nangong Wan transfer statement, target/evidence roles, per-action contracts, applicable risk pilots, separate visual/runtime/behavior gates, and the soak/stop decision; otherwise update it or use the template.
+
+## Default production sequence
+
+Follow this sequence unless the task is a narrowly isolated repair. The exception applies only when the existing target, identity master, action meaning, package route, and behavior contract are already verified and the edit is confined to a deterministic alpha/crop/cell/mapping defect or a single local frame that does not change action semantics. Any identity, acting, phase, format, or scheduler impact returns to the full applicable sequence.
+
+1. Lock the exact era, form, costume, proportions, exclusions, and evidence roles.
+2. Verify effect ownership and create identity/effect whitelists and blacklists.
+3. Approve an identity master at actual or explicit provisional desktop scale.
+4. Choose and confirm the least complex package route that preserves required fidelity.
+5. Build an action portfolio by distinct character and desktop-use roles, not by count.
+6. Write per-action phase, anchor, prop/effect, timing, menu/autoplay, and recovery contracts.
+7. Pass a representative pilot for every planned risk class before batching.
+8. Produce semantic key poses, then only structurally safe intermediates; use deterministic extraction and assembly.
+9. Pass static, true-duration motion, runtime, scheduler, boundary, interruption, and in-app gates separately.
+10. Soak at normal scale, repair observed causal failures, and stop when coverage and all applicable gates pass.
+
+## Non-negotiable quality rules
+
+| Signal | Decision |
 |---|---|
-| v2 | Repairing an existing fixed 8 × 11, 192 × 208 atlas pack that does not require migration. |
-| v3 | Creating an ordinary new single-form pet with one atlas and dynamic actions. This is the default for new single-form pets. |
-| v4 | Any required layered atlas, wide effect, full/simplified rendering, multiple form, transformation, sequence, safe restoration, or bucket/shared-cooldown autoplay exists. |
+| Current and older appearances conflict | Current official evidence governs identity; older official material supplies only compatible motion grammar. |
+| Mixed battle effects obscure the caster | Keep the effect blocked until ownership, origin, travel, peak, and decay are established. |
+| Flight looks like a standing image sliding | Redraw locomotion key poses. Timing or interpolation cannot repair the concept. |
+| A large effect makes the body smaller | Restore selected body occupancy; redesign composition/layers/route. |
+| Alignment removes intended hover or recoil | Preserve intentional body-anchor motion on a fixed action canvas. |
+| A generated grid is smooth but cells are wrong | Treat it as a storyboard candidate; inspect identity, anatomy, order, lifecycle, alpha, and anchors. |
+| One pilot succeeds | It validates only that risk class, not the batch. |
+| Schema/Registry/Catalog pass but motion looks wrong | Keep technical evidence and block visual acceptance. |
+| Every action has equal frames, timing, or frequency | Rebuild per semantic phase and separate eligibility, weight, cooldown, grouping, and manual access. |
+| Coverage is already broad | Observe real use; add or change only for a demonstrated gap. |
 
-7. Read [research-and-identity.md](references/research-and-identity.md) while collecting source evidence and preparing a new-package or migration recommendation. Read [format-and-runtime.md](references/format-and-runtime.md) and the detected version's format document before repairing an existing package. For a new package or migration, read the confirmed version's format document after confirmation. Read [visual-production-and-qa.md](references/visual-production-and-qa.md) while making or reviewing visual assets. Read [handoff-contracts.md](references/handoff-contracts.md) when recording or handing off work.
+## Minimal retained core
 
-Do not migrate an existing v2 or v3 package merely for convenience. Do not turn a v3 request into v4 only because it has many actions.
+- New packages and migrations require research-backed v2/v3/v4 recommendation and explicit confirmation. Existing repairs retain their detected version unless a confirmed fidelity need requires migration.
+- Preserve target isolation and unrelated user work.
+- Record decision provenance as `REQUIRED|DERIVED|PROPOSED|APPROVED` plus independent `candidate|selected`.
+- Track visual/runtime maturity and package status separately; tests, installation, packaging, user acceptance, and release authority are not interchangeable.
+- Validate the current executable Registry/Catalog/scheduler path, not schema shape alone.
+- Creation does not authorize installation, integration, commit, push, publication, account actions, or global changes.
 
-## Universal gates
-
-### Value contract
-
-Record every decision in the action/form contract with exactly one provenance status and a separate `selection`:
-
-| Status | Meaning |
-|---|---|
-| `REQUIRED` | A user or runtime constraint that must be satisfied. |
-| `DERIVED` | Geometry or another value computed from recorded inputs. Record its inputs and calculation. |
-| `PROPOSED` | An agent-originated value lacking recorded user or governing-artifact approval. |
-| `APPROVED` | A value approved in a recorded user instruction or governing artifact. Cite it. |
-
-| `selection` | Meaning |
-|---|---|
-| `candidate` | The value is not yet chosen. |
-| `selected` | The value passed applicable self-review and may be used in an authorized completed package. |
-
-Statuses record provenance and evidence, not package eligibility; `selection` records adoption. Do not present a `candidate` as selected or a `PROPOSED` value as `APPROVED`. In an authorized autonomous creation request, a self-reviewed `PROPOSED` choice with `selection: selected` may be used in the completed package while remaining `PROPOSED`; it does not require user approval unless the request explicitly requires it or unresolved subjective ambiguity blocks safe selection.
-
-### Build and review loop
-
-1. After a new package or migration version is confirmed, or after an existing package's detected version is retained for repair, establish the final evidence ledger, identity master, and action/form contract before batch production. For a repair that retains the detected package version, `FORMAT_CONFIRMATION` is not required. For an authorized creation request, an agent-self-reviewed `PROPOSED` master with `selection: selected` that passes applicable identity and visual gates may proceed without further user approval; use `APPROVED` only for recorded user or governing-artifact approval. The format confirmation is a distinct mandatory gate for new packages and migrations, not a requirement to request approval for every creative or timing choice.
-2. Make key poses and anchors before intermediate frames. Interpolate only structurally stable adjacent poses.
-3. Validate the selected manifest, assets, and actual Registry-to-Catalog/runtime route. Resolve operational paths from the actual source/build or launched version being validated. For current repository HEAD, the log is `%LOCALAPPDATA%\DesktopCompanion\logs\DesktopCompanion.log`. When documentation disagrees with executable source or build behavior, record the conflict and inspect the path used by the launched version.
-4. Self-review every applicable visual and runtime gate. Repair the smallest failing master, action, interval, layer, configuration, or test; rerun affected gates.
-5. Stop only when all applicable gates pass. Ask for user visual approval only when the current request requires it or a subjective ambiguity cannot be resolved safely.
-
-## Scope and authority
-
-Creating or repairing assets authorizes only the scoped package work. It does not authorize built-in integration, live installation, commits, pushes, publication, release builds, downloads, browser/account actions, or global configuration. Obtain explicit authority before any of those operations.
-
-Stop and report the exact blocker when target identity, approved source inputs, write scope, or a required runtime/visual gate cannot be established safely.
+Stop with the exact blocker when evidence, target identity, write scope, format confirmation, or a required quality/runtime gate cannot be established.

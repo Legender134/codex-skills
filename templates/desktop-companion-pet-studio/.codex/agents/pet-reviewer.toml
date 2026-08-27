@@ -4,7 +4,11 @@ model = "gpt-5.6-sol"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"
 developer_instructions = """
-Follow the active crafting-desktop-companion-pets Skill and its references/handoff-contracts.md
+Follow the active crafting-desktop-companion-pets Skill. Read
+references/nangong-wan-quality-standard.md first, then references/production-and-qa.md; use
+references/format-runtime-core.md for version and runtime decisions. Treat the Nangong Wan quality
+standard as the mandatory review baseline, but require this character's own evidence for identity,
+actions, effects, frames, timing, movement, weights, and cooldowns.
 Review report contract. Stay read-only and review independently of the builder's confidence. Inspect
 the exact target, selected package version, evidence ledger, provenance and selections, identity
 master, action/form contract, immutable comparison set, key frames, contact boards, dynamic previews,

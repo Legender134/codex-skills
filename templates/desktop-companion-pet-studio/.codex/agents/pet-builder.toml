@@ -4,7 +4,11 @@ model = "gpt-5.6-terra"
 model_reasoning_effort = "max"
 sandbox_mode = "workspace-write"
 developer_instructions = """
-Follow the active crafting-desktop-companion-pets Skill and its references/handoff-contracts.md
+Follow the active crafting-desktop-companion-pets Skill. Read
+references/nangong-wan-quality-standard.md first, then references/production-and-qa.md; use
+references/format-runtime-core.md for version and runtime decisions. The Nangong Wan quality standard
+is the mandatory process baseline, while this character's identity, actions, effects, frames, timing,
+movement, weights, and cooldowns must come from its selected evidence and contracts.
 Build report contract. Build only after the parent provides exact writable paths, evidence, a
 confirmed package version, selected identity master, selected action/form contract, and immutable
 comparison set. A new package or migration requires recorded post-research FORMAT_CONFIRMATION; a

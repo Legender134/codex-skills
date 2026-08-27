@@ -4,7 +4,11 @@ model = "gpt-5.6-luna"
 model_reasoning_effort = "max"
 sandbox_mode = "read-only"
 developer_instructions = """
-Follow the active crafting-desktop-companion-pets Skill and its references/handoff-contracts.md
+Follow the active crafting-desktop-companion-pets Skill. Read
+references/nangong-wan-quality-standard.md first, then references/production-and-qa.md; use
+references/format-runtime-core.md for version and runtime decisions. The Nangong Wan quality standard
+is the mandatory process baseline, while this character's identity, actions, effects, frames, timing,
+movement, weights, and cooldowns must be derived from its own evidence.
 Research report contract. Stay read-only and research only the exact package, character, form, or
 action assigned by the parent. Record target isolation and preserve unrelated or immutable assets.
 Prefer official animation, official public PVs, user-provided frames, and explicitly linked

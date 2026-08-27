@@ -12,10 +12,12 @@ TEMPLATE = ROOT / "templates" / "desktop-companion-pet-studio"
 EXPECTED_SKILL_FILES = {
     "SKILL.md",
     "agents/openai.yaml",
-    "references/format-and-runtime.md",
-    "references/handoff-contracts.md",
-    "references/research-and-identity.md",
-    "references/visual-production-and-qa.md",
+    "references/format-runtime-core.md",
+    "references/nangong-wan-quality-standard.md",
+    "references/production-and-qa.md",
+    "templates/action-contract.md",
+    "templates/research-brief.md",
+    "templates/review-checklist.md",
 }
 EXPECTED_TOOLCHAIN_FILES = {
     "docs/development-pet-toolchain.md",
@@ -56,6 +58,8 @@ def test_pet_skill_is_complete_and_locally_linked() -> None:
     assert relative_files(SKILL) == EXPECTED_SKILL_FILES
     skill_text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
     assert skill_text.startswith("---\nname: crafting-desktop-companion-pets\n")
+    assert "Use the Nangong Wan/南宫婉 pet as the mandatory quality baseline" in skill_text
+    assert "Always read [nangong-wan-quality-standard.md]" in skill_text
     for target in re.findall(r"\]\((references/[^)]+\.md)\)", skill_text):
         assert (SKILL / target).is_file(), target
 
@@ -91,6 +95,13 @@ def test_project_profile_publishes_version_neutral_pet_agents() -> None:
         assert agent["sandbox_mode"] == sandbox
         assert "crafting-desktop-companion-pets" in instructions
         assert all(version in instructions for version in ("v2", "v3", "v4"))
+        assert "handoff-contracts.md" not in instructions
+        for reference in (
+            "references/nangong-wan-quality-standard.md",
+            "references/production-and-qa.md",
+            "references/format-runtime-core.md",
+        ):
+            assert reference in instructions
 
     researcher = tomllib.loads(
         (TEMPLATE / ".codex" / "agents" / "pet-researcher.toml").read_text(

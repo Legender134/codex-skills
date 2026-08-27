@@ -1,7 +1,7 @@
 interface:
   display_name: "DesktopCompanion Pet Studio"
-  short_description: "Build and review every DesktopCompanion pet format"
-  default_prompt: "Use $crafting-desktop-companion-pets to research a DesktopCompanion character, recommend and confirm the fidelity-preserving package version, then build or repair it with complete visual/runtime QA."
+  short_description: "Nangong Wan-quality DesktopCompanion pet production"
+  default_prompt: "Use $crafting-desktop-companion-pets and treat the Nangong Wan quality standard as the mandatory production baseline while deriving this character's own identity, actions, effects, frames, timing, movement, and scheduling from evidence."
 
 policy:
   allow_implicit_invocation: true
