@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "repetitionsPerVariant": 5,
+  "manualReadRequired": true,
+  "criteriaByScenario": {
+    "B01": ["target evidence governs proportion", "actual-size visual verdict required"],
+    "B02": ["technical and visual statuses remain separate"],
+    "B03": ["missing proportion evidence blocks identity selection"],
+    "B04": ["current official identity outranks historical identity"],
+    "B05": ["original route uses approved creative brief"],
+    "B06": ["style role cannot govern identity or proportion"],
+    "B07": ["locomotion requires new key poses"],
+    "B08": ["canonical body occupancy is preserved"],
+    "B09": ["repair scope follows causal dependency"],
+    "B10": ["format follows capability requirements"],
+    "B11": ["schema pass is not runtime pass"],
+    "B12": ["installation and publication authority are not inferred"]
+  }
+}

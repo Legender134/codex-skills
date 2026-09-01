@@ -1,0 +1,13 @@
+{
+  "runtimeCommit": "13222f9814cdac7d2f98b8005a2d601c4946e202",
+  "source": {
+    "schemaPath": "schemas/pet-pack-v3.schema.json",
+    "schemaSha256": "f264b9d02fba4a8033d876d0da98e02467dca07e48bb83a96b4d2399320e1ed8",
+    "manifestPath": "examples/pet-pack-template/pet.json",
+    "manifestSha256": "d15a17227a1b7f227a9a87f2120747fed88ff501540f24d77952d1873a900522"
+  },
+  "fixture": {
+    "path": "tests/fixtures/v3/pet.json",
+    "sha256": "d15a17227a1b7f227a9a87f2120747fed88ff501540f24d77952d1873a900522"
+  }
+}

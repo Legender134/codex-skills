@@ -1,0 +1,13 @@
+{
+  "runtimeCommit": "13222f9814cdac7d2f98b8005a2d601c4946e202",
+  "source": {
+    "schemaPath": "schemas/pet-pack-v2.schema.json",
+    "schemaSha256": "2f7de59531f9c689455cfa1ca4a20b417ca8de67c3c8d24700a66ccc13086135",
+    "manifestPath": "src/shiyi_desktop_pet/resources/pets/ziling/pet.json",
+    "manifestSha256": "0d1f144406e4210b3a1687c24ce53de64fa99640328700eb5004430caf441363"
+  },
+  "fixture": {
+    "path": "tests/fixtures/v2/pet.json",
+    "sha256": "0d1f144406e4210b3a1687c24ce53de64fa99640328700eb5004430caf441363"
+  }
+}
