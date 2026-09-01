@@ -1,7 +1,7 @@
 interface:
   display_name: "DesktopCompanion Pet Studio"
-  short_description: "Build and review every DesktopCompanion pet format"
-  default_prompt: "Use $crafting-desktop-companion-pets to research a DesktopCompanion character, recommend and confirm the fidelity-preserving package version, then build or repair it with complete visual/runtime QA."
+  short_description: "Evidence-led DesktopCompanion pets across v2, v3, and v4"
+  default_prompt: "Use $crafting-desktop-companion-pets to create or repair this DesktopCompanion pet with the correct identity route, format, visual QA, runtime checks, and authority gates."
 
 policy:
   allow_implicit_invocation: true

@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "projectId": "draft-pet",
+  "identityRoute": "source-faithful",
+  "formatRoute": "undecided",
+  "status": "draft",
+  "selection": "candidate",
+  "jobs": [],
+  "jobDefaults": {
+    "id": null,
+    "kind": null,
+    "status": "pending",
+    "dependsOn": [],
+    "inputHashes": {},
+    "artifactSha256": null,
+    "canonicalIdentitySha256": null,
+    "importedIdentityRoot": false,
+    "technicalVerdictId": null,
+    "visualVerdictId": null,
+    "nextStrategy": null,
+    "retryCount": 0,
+    "failureHistory": [],
+    "strategyChange": {
+      "classification": null,
+      "causalInputs": [],
+      "causalEvidence": []
+    }
+  },
+  "technicalStatus": "unverified",
+  "visualStatus": "not-reviewed",
+  "authority": {
+    "identityUncertaintyApproved": false,
+    "install": false,
+    "integrate": false,
+    "publish": false
+  }
+}

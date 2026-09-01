@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "projectId": "draft-pet",
+  "identityRoute": "source-faithful",
+  "formatRoute": "undecided",
+  "verdictId": null,
+  "status": "draft",
+  "selection": "candidate",
+  "gate": "identity",
+  "subjectPaths": [],
+  "evidenceIds": [],
+  "diagnosticIds": [],
+  "artifactPath": null,
+  "artifactSha256": null,
+  "reviewedArtifactSha256": null,
+  "canonicalSubjectSha256": null,
+  "technicalStatus": "unverified",
+  "visualStatus": "not-reviewed",
+  "decision": "needs-review",
+  "reviewScale": "not-reviewed",
+  "reviewer": {
+    "type": "unassigned",
+    "id": null
+  },
+  "observations": [],
+  "blockingObservations": [],
+  "authority": {
+    "identityUncertaintyApproved": false,
+    "install": false,
+    "integrate": false,
+    "publish": false
+  }
+}

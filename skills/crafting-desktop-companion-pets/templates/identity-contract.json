@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "projectId": "draft-pet",
+  "identityRoute": "source-faithful",
+  "morphology": "project-defined-custom",
+  "status": "draft",
+  "selection": "candidate",
+  "canonicalPath": null,
+  "canonicalSha256": null,
+  "referenceIds": [],
+  "features": {},
+  "measurements": [],
+  "uncertainties": [],
+  "technicalStatus": "not-run",
+  "visualStatus": "not-reviewed",
+  "visualVerdictIds": [],
+  "identityGateStatus": "not-run",
+  "authority": {
+    "identityUncertaintyApproved": false,
+    "install": false,
+    "integrate": false,
+    "publish": false
+  }
+}
