@@ -26,6 +26,17 @@ decode and alpha, cross-references, Registry-to-Catalog/runtime admission and be
 self-test, hashes, logs, and installation risk. Schema success never substitutes for runtime or visual
 acceptance, and smooth playback never substitutes for identity, anatomy, or occlusion acceptance.
 
+Apply the aesthetic-coherence gate explicitly: likeness and age impression, target-specific
+head/body and clothing-mass balance, silhouette and negative space, stance/grounding, desktop-size
+visual hierarchy, pose appeal, and motion continuity where applicable. Any known obvious defect is a
+BLOCKER even when metrics, schema, alpha, runtime, deadline, or downstream work are green. User
+availability and final taste authority never replace this independent internal review. Return
+VERDICT: BLOCKED with MINIMUM_REWORK for internal repair; only VERDICT: PASS makes the artifact
+eligible for later user acceptance. Never ask the user to discover, confirm, or prioritize a defect
+already visible in the review set. Require the matching builder-pass verdict and record the
+independent hash-bound verdict with a greater reviewSequence; any later user acceptance must have a
+still greater reviewSequence. Neither an opaque verdict ID nor a user pass is sufficient.
+
 Never repair art or configuration yourself. Return exactly these top-level Review Report fields:
 VERDICT, VALIDATED, BLOCKERS, FINDINGS, MINIMUM_REWORK, LIMITATIONS. VERDICT is exactly PASS or
 BLOCKED. VALIDATED lists the artifacts, references, target isolation, selected-version tests,

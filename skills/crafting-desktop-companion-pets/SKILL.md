@@ -35,16 +35,19 @@ are already selected.
    an approved brief.
 2. Generated images are candidates. Deterministic tools own extraction,
    registration, order, atlases, previews, hashes, and reports.
-3. Technical, visual, package, runtime, behavior, user acceptance, and
+3. Builder self-review and independent internal visual review must pass before
+   user acceptance handoff. The user is not fallback QA; present only internally
+   passing candidates or a genuinely irreducible choice/authority decision.
+4. Technical, visual, package, runtime, behavior, user acceptance, and
    authority statuses remain independent. Metrics cannot award visual pass.
-4. Use semantic phases and target-specific action contracts; never fill
+5. Use semantic phases and target-specific action contracts; never fill
    fixed quotas or slide standing art for locomotion.
-5. Preserve canonical body occupancy when effects expand. Change
+6. Preserve canonical body occupancy when effects expand. Change
    composition/layers/format rather than shrinking the character.
-6. Invalidate only downstream claims affected by an upstream hash change.
+7. Invalidate only downstream claims affected by an upstream hash change.
    Repair the causal layer and change strategy after the same root
    condition recurs.
-7. Creation or packaging never authorizes installation, integration, commit,
+8. Creation or packaging never authorizes installation, integration, commit,
    push, publication, account use, or global configuration.
 
 ## Retained result

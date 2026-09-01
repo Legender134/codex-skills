@@ -14,7 +14,7 @@ AUTHORITATIVE_EVIDENCE_CLASSES = {
     "same-character-current",
     "approved-original-design",
 }
-VISUAL_REVIEWER_TYPES = {"independent", "user"}
+VISUAL_REVIEWER_TYPES = {"builder", "independent", "user"}
 VISUAL_VERDICT_GATES = {"identity", "motion", "action", "visual"}
 VISUAL_VERDICT_DECISIONS = {"pass", "fail", "needs-review"}
 VISUAL_REVIEW_SCALES = {
@@ -643,7 +643,7 @@ def validate_visual_verdict(verdict: dict[str, object]) -> list[Issue]:
                 Issue(
                     "VISUAL_PASS_REVIEWER_UNAUTHORIZED",
                     "verdict.reviewer",
-                    "Visual passes require an independent or user reviewer with an id.",
+                    "Visual passes require a builder, independent, or user reviewer with an id.",
                 )
             )
         if gate == "identity" and review_scale != "actual-runtime-size":
@@ -713,7 +713,12 @@ def _result(
     }
 
 
-def _accepted_visual_verdict(verdict: dict[str, object], canonical_sha256: str) -> bool:
+def _accepted_visual_verdict(
+    verdict: dict[str, object],
+    canonical_sha256: str,
+    *,
+    reviewer_type: str,
+) -> bool:
     reviewer = verdict.get("reviewer")
     return (
         _is_utf8_text(verdict.get("gate"))
@@ -725,7 +730,7 @@ def _accepted_visual_verdict(verdict: dict[str, object], canonical_sha256: str) 
         and _is_utf8_text(verdict.get("artifactSha256"))
         and verdict.get("artifactSha256").lower() == canonical_sha256.lower()
         and isinstance(reviewer, dict)
-        and _text_is_one_of(reviewer.get("type"), VISUAL_REVIEWER_TYPES)
+        and reviewer.get("type") == reviewer_type
         and _is_utf8_text(reviewer.get("id"))
         and bool(reviewer.get("id"))
     )
@@ -889,12 +894,71 @@ def evaluate_identity_gate(
             [],
         )
 
-    accepted_verdict_ids = [
-        verdict["verdictId"]
-        for verdict in verdicts
-        if _accepted_visual_verdict(verdict, actual_sha256)
-    ]
-    if accepted_verdict_ids:
+    matching_indexes = {
+        reviewer_type: [
+            index
+            for index, verdict in enumerate(verdicts)
+            if _accepted_visual_verdict(
+                verdict,
+                actual_sha256,
+                reviewer_type=reviewer_type,
+            )
+        ]
+        for reviewer_type in ("builder", "independent", "user")
+    }
+    builder_indexes = matching_indexes["builder"]
+    independent_indexes = matching_indexes["independent"]
+    user_indexes = matching_indexes["user"]
+    review_pair = next(
+        (
+            (builder_index, independent_index)
+            for independent_index in independent_indexes
+            for builder_index in builder_indexes
+            if builder_index < independent_index
+        ),
+        None,
+    )
+    if not builder_indexes:
+        technical_issues.append(
+            Issue(
+                "BUILDER_SELF_REVIEW_PASS_REQUIRED",
+                "verdicts",
+                "A matching builder actual-size self-review pass is required.",
+            )
+        )
+    if not independent_indexes:
+        technical_issues.append(
+            Issue(
+                "INDEPENDENT_VISUAL_PASS_REQUIRED_BEFORE_USER_HANDOFF",
+                "verdicts",
+                "A matching independent internal visual pass is required before user handoff.",
+            )
+        )
+    elif builder_indexes and review_pair is None:
+        technical_issues.append(
+            Issue(
+                "INTERNAL_VISUAL_REVIEW_ORDER_INVALID",
+                "verdicts",
+                "Builder self-review must pass before independent internal review.",
+            )
+        )
+    if user_indexes and (
+        review_pair is None or any(index < review_pair[1] for index in user_indexes)
+    ):
+        technical_issues.append(
+            Issue(
+                "USER_HANDOFF_PRECEDED_INTERNAL_VISUAL_PASS",
+                f"verdicts[{user_indexes[0]}]",
+                "User handoff cannot precede the builder and independent internal visual passes.",
+            )
+        )
+    if review_pair is not None and not any(
+        index < review_pair[1] for index in user_indexes
+    ):
+        accepted_verdict_ids = [
+            verdicts[review_pair[0]]["verdictId"],
+            verdicts[review_pair[1]]["verdictId"],
+        ]
         return _result(
             "identity-selected",
             technical_issues,
@@ -1694,6 +1758,7 @@ def _maturity_defaults(blockers: set[str] | None = None) -> dict[str, object]:
         "packageStatus": "not-packaged",
         "runtimeStatus": "unverified",
         "installedStatus": "not-authorized",
+        "internalVisualPasses": [],
         "userAcceptance": [],
         "authorities": {
             "install": False,
@@ -1915,15 +1980,18 @@ def _installation_evidence_valid(
 def _valid_user_acceptance(
     value: object,
     verified_artifacts: dict[str, str] | None,
+    internal_visual_passes: list[dict[str, object]],
+    formal_gates_pass: bool,
     blockers: set[str],
-) -> list[dict[str, str]]:
+) -> list[dict[str, object]]:
     if value is None:
         return []
     if not isinstance(value, list):
         blockers.add("USER_ACCEPTANCE_INVALID")
         return []
-    accepted: list[dict[str, str]] = []
-    seen: set[tuple[str, str, str, str, str]] = set()
+    accepted: list[dict[str, object]] = []
+    seen: set[tuple[str, str, str, str, str, int]] = set()
+    seen_sequences: set[int] = set()
     for index, record in enumerate(value):
         if not isinstance(record, dict):
             blockers.add(f"USER_ACCEPTANCE_{index}_INVALID")
@@ -1933,13 +2001,17 @@ def _valid_user_acceptance(
         gate = record.get("gate")
         decision = record.get("decision")
         reviewer = record.get("reviewer")
+        review_sequence = record.get("reviewSequence")
         normalized_path = _normalized_artifact_path(artifact_path)
         if not (
             normalized_path is not None
             and _valid_sha256(artifact_sha)
+            and _is_utf8_text(gate)
             and gate in _USER_ACCEPTANCE_GATES
+            and _is_utf8_text(decision)
             and decision in _USER_ACCEPTANCE_DECISIONS
             and _nonempty_text(reviewer)
+            and _is_positive_integer(review_sequence)
         ):
             blockers.add(f"USER_ACCEPTANCE_{index}_INVALID")
             continue
@@ -1949,17 +2021,51 @@ def _valid_user_acceptance(
         if verified_artifacts.get(normalized_path) != artifact_sha.lower():
             blockers.add(f"USER_ACCEPTANCE_{index}_ARTIFACT_UNVERIFIED")
             continue
+        if not formal_gates_pass:
+            blockers.add("INTERNAL_VISUAL_PASS_REQUIRED_BEFORE_USER_ACCEPTANCE")
+            continue
+        matching_passes = [
+            internal_pass
+            for internal_pass in internal_visual_passes
+            if internal_pass["artifactPath"] == normalized_path
+            and internal_pass["artifactSha256"] == artifact_sha.lower()
+            and internal_pass["gate"] == gate
+        ]
+        matching_reviewers = {
+            internal_pass["reviewer"] for internal_pass in matching_passes
+        }
+        if matching_reviewers != {"builder", "independent"}:
+            blockers.add(f"USER_ACCEPTANCE_{index}_INTERNAL_PASS_REQUIRED")
+            continue
+        builder_sequence = next(
+            internal_pass["reviewSequence"]
+            for internal_pass in matching_passes
+            if internal_pass["reviewer"] == "builder"
+        )
+        independent_sequence = next(
+            internal_pass["reviewSequence"]
+            for internal_pass in matching_passes
+            if internal_pass["reviewer"] == "independent"
+        )
+        assert isinstance(builder_sequence, int)
+        assert isinstance(independent_sequence, int)
+        assert isinstance(review_sequence, int)
+        if not builder_sequence < independent_sequence < review_sequence:
+            blockers.add(f"USER_ACCEPTANCE_{index}_INTERNAL_REVIEW_ORDER_INVALID")
+            continue
         item = (
             normalized_path,
             artifact_sha.lower(),
             gate,
             decision,
             reviewer,
+            review_sequence,
         )
-        if item in seen:
+        if item in seen or review_sequence in seen_sequences:
             blockers.add("USER_ACCEPTANCE_DUPLICATE")
             continue
         seen.add(item)
+        seen_sequences.add(review_sequence)
         accepted.append(
             {
                 "artifactPath": normalized_path,
@@ -1967,16 +2073,101 @@ def _valid_user_acceptance(
                 "gate": gate,
                 "decision": decision,
                 "reviewer": reviewer,
+                "reviewSequence": review_sequence,
             }
         )
     return sorted(
         accepted,
         key=lambda item: (
+            item["reviewSequence"],
             item["artifactPath"],
             item["artifactSha256"],
             item["gate"],
             item["decision"],
             item["reviewer"],
+        ),
+    )
+
+
+def _valid_internal_visual_passes(
+    value: object,
+    verified_artifacts: dict[str, str] | None,
+    blockers: set[str],
+) -> list[dict[str, object]]:
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        blockers.add("INTERNAL_VISUAL_PASSES_INVALID")
+        return []
+    accepted: list[dict[str, object]] = []
+    seen_ids: set[str] = set()
+    seen_records: set[tuple[str, str, str, str]] = set()
+    seen_sequences: set[int] = set()
+    for index, record in enumerate(value):
+        prefix = f"INTERNAL_VISUAL_PASS_{index}"
+        if not isinstance(record, dict):
+            blockers.add(f"{prefix}_INVALID")
+            continue
+        verdict_id = record.get("verdictId")
+        artifact_path = record.get("artifactPath")
+        artifact_sha = record.get("artifactSha256")
+        gate = record.get("gate")
+        decision = record.get("decision")
+        reviewer = record.get("reviewer")
+        review_sequence = record.get("reviewSequence")
+        normalized_path = _normalized_artifact_path(artifact_path)
+        if not (
+            _nonempty_text(verdict_id)
+            and normalized_path is not None
+            and _valid_sha256(artifact_sha)
+            and _is_utf8_text(gate)
+            and gate in _USER_ACCEPTANCE_GATES
+            and decision == "pass"
+            and _is_utf8_text(reviewer)
+            and reviewer in {"builder", "independent"}
+            and _is_positive_integer(review_sequence)
+        ):
+            blockers.add(f"{prefix}_INVALID")
+            continue
+        if verified_artifacts is None:
+            blockers.add("VERIFIED_ARTIFACT_CONTEXT_REQUIRED")
+            continue
+        if verified_artifacts.get(normalized_path) != artifact_sha.lower():
+            blockers.add(f"{prefix}_ARTIFACT_UNVERIFIED")
+            continue
+        normalized_id = verdict_id.strip()
+        item = (normalized_path, artifact_sha.lower(), gate, reviewer)
+        assert isinstance(review_sequence, int)
+        if (
+            normalized_id in seen_ids
+            or item in seen_records
+            or review_sequence in seen_sequences
+        ):
+            blockers.add("INTERNAL_VISUAL_PASS_DUPLICATE")
+            continue
+        seen_ids.add(normalized_id)
+        seen_records.add(item)
+        seen_sequences.add(review_sequence)
+        accepted.append(
+            {
+                "verdictId": normalized_id,
+                "artifactPath": normalized_path,
+                "artifactSha256": artifact_sha.lower(),
+                "gate": gate,
+                "decision": "pass",
+                "reviewer": reviewer,
+                "reviewSequence": review_sequence,
+            }
+        )
+    return sorted(
+        accepted,
+        key=lambda item: (
+            item["reviewSequence"],
+            item["artifactPath"],
+            item["artifactSha256"],
+            item["gate"],
+            item["reviewer"],
+            item["verdictId"],
         ),
     )
 
@@ -2047,15 +2238,17 @@ def evaluate_maturity(run: dict[str, object]) -> dict[str, object]:
     )
 
     verified_artifacts = _verified_artifact_index(run, blockers)
+    internal_visual_passes = _valid_internal_visual_passes(
+        run.get("internalVisualPasses"), verified_artifacts, blockers
+    )
     user_acceptance = _valid_user_acceptance(
-        run.get("userAcceptance"), verified_artifacts, blockers
+        run.get("userAcceptance"),
+        verified_artifacts,
+        internal_visual_passes,
+        formal_gates_pass,
+        blockers,
     )
-    visual_status = (
-        "pass"
-        if formal_gates_pass
-        or any(item["decision"] == "pass" for item in user_acceptance)
-        else "not-reviewed"
-    )
+    visual_status = "pass" if formal_gates_pass else "not-reviewed"
     maturity_index = 0
     identity_gate = run.get("identityGateStatus")
     if identity_gate == "identity-candidate":
@@ -2132,6 +2325,7 @@ def evaluate_maturity(run: dict[str, object]) -> dict[str, object]:
         "packageStatus": package_status,
         "runtimeStatus": runtime_status,
         "installedStatus": installed_status,
+        "internalVisualPasses": internal_visual_passes,
         "userAcceptance": user_acceptance,
         "authorities": authorities,
         "releaseAuthority": maturity_index == len(_MATURITY_STAGES) - 1,

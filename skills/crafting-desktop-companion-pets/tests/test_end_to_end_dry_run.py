@@ -70,6 +70,20 @@ def _write_json(path: Path, payload: dict[str, object]) -> None:
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def _identity_visual_verdict(
+    verdict_id: str, reviewer_type: str, artifact_sha256: str
+) -> dict[str, object]:
+    return {
+        "verdictId": verdict_id,
+        "gate": "visual",
+        "decision": "pass",
+        "reviewScale": "actual-runtime-size",
+        "artifactSha256": artifact_sha256,
+        "reviewer": {"type": reviewer_type, "id": f"{reviewer_type}-1"},
+        "observations": [f"{reviewer_type} actual-size review is recorded."],
+    }
+
+
 def _assert_checksum_complete(
     test: unittest.TestCase,
     root: Path,
@@ -140,6 +154,46 @@ def _write_unfinished_summary_draft(run: Path, identity_status: str) -> None:
 
 
 class EndToEndDryRunTest(unittest.TestCase):
+    def test_generation_jobs_recompute_gate_and_reject_user_only_identity_pass(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            canonical = Path(raw) / "canonical.png"
+            canonical.write_bytes(b"canonical identity")
+            canonical_sha256 = _sha256(canonical)
+            identity = {
+                "projectId": "review-order",
+                "identityRoute": "original-brand",
+                "canonicalPath": str(canonical),
+                "canonicalSha256": canonical_sha256,
+                "referenceIds": ["approved-brief"],
+                "technicalStatus": "pass",
+                "identityGateStatus": "identity-selected",
+                "selection": "selected",
+                "visualVerdictIds": ["user-visual-1"],
+                "authority": {"identityUncertaintyApproved": False},
+            }
+            references = [
+                {
+                    "id": "approved-brief",
+                    "roles": ["identity", "proportion"],
+                    "allowedUses": ["canonical-identity"],
+                    "evidenceClass": "approved-original-design",
+                }
+            ]
+            user_verdict = {
+                "verdictId": "user-visual-1",
+                "gate": "visual",
+                "decision": "pass",
+                "reviewScale": "actual-runtime-size",
+                "artifactSha256": canonical_sha256,
+                "reviewer": {"type": "user", "id": "user-1"},
+                "observations": ["User accepted the candidate."],
+            }
+
+            with self.assertRaises(SelectionError):
+                build_generation_jobs(identity, [], references, [user_verdict])
+
     def test_no_verdict_dry_run_stops_at_visual_candidate_without_escaping_run(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             workspace = Path(raw)
@@ -217,18 +271,32 @@ class EndToEndDryRunTest(unittest.TestCase):
             self.assertTrue(action_contracts)
             for action in action_contracts:
                 self.assertEqual(validate_action_contract(action), [])
-            with self.assertRaisesRegex(SelectionError, "identityGateStatus"):
-                build_generation_jobs(identity, action_contracts)
+            with self.assertRaisesRegex(SelectionError, "evaluated identity gate"):
+                build_generation_jobs(identity, action_contracts, sources["sources"], [])
             selected_for_route_assertion = copy.deepcopy(identity)
+            internal_verdicts = [
+                _identity_visual_verdict(
+                    "builder-identity-pass", "builder", _sha256(canonical)
+                ),
+                _identity_visual_verdict(
+                    "independent-identity-pass", "independent", _sha256(canonical)
+                ),
+            ]
             selected_for_route_assertion.update(
                 {
                     "identityGateStatus": "identity-selected",
                     "selection": "selected",
-                    "visualVerdictIds": ["synthetic-route-only-selection"],
+                    "visualVerdictIds": [
+                        "builder-identity-pass",
+                        "independent-identity-pass",
+                    ],
                 }
             )
             selected_jobs = build_generation_jobs(
-                selected_for_route_assertion, action_contracts
+                selected_for_route_assertion,
+                action_contracts,
+                sources["sources"],
+                internal_verdicts,
             )
             self.assertEqual(selected_jobs["formatRoute"], "v4")
             self.assertEqual(identity["identityGateStatus"], "visual-candidate")

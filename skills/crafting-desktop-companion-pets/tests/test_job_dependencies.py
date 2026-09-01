@@ -42,13 +42,15 @@ JSON_SHAPED_VALUES = (
 )
 
 
-def action_contract(action_id: str = "walk-right") -> dict[str, object]:
+def action_contract(
+    action_id: str = "walk-right", identity_sha256: str = HASH_A
+) -> dict[str, object]:
     return {
         "schemaVersion": 1,
         "actionId": action_id,
         "family": "ordinary-locomotion",
         "riskClass": "cyclic-locomotion",
-        "identitySha256": HASH_A,
+        "identitySha256": identity_sha256,
         "desktopRole": "ordinary-right-movement",
         "phases": [
             {
@@ -106,6 +108,84 @@ def action_contract(action_id: str = "walk-right") -> dict[str, object]:
         },
         "selection": "candidate",
     }
+
+
+def write_identity_gate_evidence(
+    root: Path,
+) -> tuple[str, Path, list[Path]]:
+    canonical_path = root / "canonical.png"
+    canonical_path.write_bytes(b"canonical identity")
+    canonical_sha256 = hashlib.sha256(canonical_path.read_bytes()).hexdigest()
+    references_path = root / "references.json"
+    references_path.write_text(
+        json.dumps(
+            {
+                "sources": [
+                    {
+                        "id": "approved-brief",
+                        "roles": ["identity", "proportion"],
+                        "allowedUses": ["canonical-identity"],
+                        "evidenceClass": "approved-original-design",
+                    }
+                ]
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    verdict_paths: list[Path] = []
+    for reviewer_type in ("builder", "independent"):
+        path = root / f"{reviewer_type}-visual.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "verdictId": f"{reviewer_type}-identity-pass",
+                    "gate": "visual",
+                    "decision": "pass",
+                    "reviewScale": "actual-runtime-size",
+                    "artifactSha256": canonical_sha256,
+                    "reviewer": {
+                        "type": reviewer_type,
+                        "id": f"{reviewer_type}-1",
+                    },
+                    "observations": [
+                        f"{reviewer_type} actual-size review is recorded."
+                    ],
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        verdict_paths.append(path)
+    return canonical_sha256, references_path, verdict_paths
+
+
+def selected_identity_contract(root: Path, canonical_sha256: str) -> dict[str, object]:
+    return {
+        "identityRoute": "original-brand",
+        "referenceIds": ["approved-brief"],
+        "canonicalPath": str(root / "canonical.png"),
+        "canonicalSha256": canonical_sha256,
+        "technicalStatus": "pass",
+        "identityGateStatus": "identity-selected",
+        "selection": "selected",
+        "visualVerdictIds": [
+            "builder-identity-pass",
+            "independent-identity-pass",
+        ],
+        "authority": {"identityUncertaintyApproved": False},
+    }
+
+
+def identity_gate_cli_args(
+    references_path: Path, verdict_paths: list[Path]
+) -> list[str]:
+    arguments = ["--references", str(references_path)]
+    for path in verdict_paths:
+        arguments.extend(["--verdict", str(path)])
+    return arguments
 
 
 def job_manifest() -> dict[str, object]:
@@ -884,13 +964,19 @@ class JobDependencyTest(unittest.TestCase):
             actions_path = root / "actions"
             actions_path.mkdir()
             output_path = root / "jobs.json"
+            canonical_sha256, references_path, verdict_paths = (
+                write_identity_gate_evidence(root)
+            )
             action_paths = [
                 actions_path / "zeta.json",
                 actions_path / "alpha.json",
             ]
             for path, action_id in zip(action_paths, ("zeta", "alpha"), strict=True):
                 path.write_text(
-                    json.dumps(action_contract(action_id), indent=2) + "\n",
+                    json.dumps(
+                        action_contract(action_id, canonical_sha256), indent=2
+                    )
+                    + "\n",
                     encoding="utf-8",
                 )
             unselected_identity = {
@@ -912,6 +998,7 @@ class JobDependencyTest(unittest.TestCase):
                 str(SKILL_ROOT / "scripts" / "prepare_generation_jobs.py"),
                 "--identity",
                 str(identity_path),
+                *identity_gate_cli_args(references_path, verdict_paths),
                 "--actions",
                 str(actions_path),
                 "--output",
@@ -927,13 +1014,7 @@ class JobDependencyTest(unittest.TestCase):
                 input_hashes,
             )
 
-            selected_identity = {
-                "identityGateStatus": "identity-selected",
-                "selection": "selected",
-                "canonicalSha256": HASH_A,
-                "technicalStatus": "pass",
-                "visualVerdictIds": ["identity-visual-z", "identity-visual-a"],
-            }
+            selected_identity = selected_identity_contract(root, canonical_sha256)
             identity_path.write_text(
                 json.dumps(selected_identity, indent=2) + "\n", encoding="utf-8"
             )
@@ -953,7 +1034,10 @@ class JobDependencyTest(unittest.TestCase):
                 ],
             )
             self.assertIsNone(generated["jobs"][0]["technicalVerdictId"])
-            self.assertEqual(generated["jobs"][0]["visualVerdictId"], "identity-visual-a")
+            self.assertEqual(
+                generated["jobs"][0]["visualVerdictId"],
+                "independent-identity-pass",
+            )
             self.assertEqual(validate_job_manifest(generated), [])
             self.assertEqual(
                 {path: hashlib.sha256(path.read_bytes()).hexdigest() for path in input_hashes if path != identity_path},
@@ -965,7 +1049,15 @@ class JobDependencyTest(unittest.TestCase):
             self.assertEqual(output_path.read_bytes(), first_output)
             self.assertEqual(
                 {path.name for path in root.iterdir()},
-                {"actions", "identity.json", "jobs.json"},
+                {
+                    "actions",
+                    "builder-visual.json",
+                    "canonical.png",
+                    "identity.json",
+                    "independent-visual.json",
+                    "jobs.json",
+                    "references.json",
+                },
             )
 
     def test_job_cli_rejects_output_aliases_and_action_directory_writes(self) -> None:
@@ -975,22 +1067,23 @@ class JobDependencyTest(unittest.TestCase):
             actions_path = root / "actions"
             actions_path.mkdir()
             action_path = actions_path / "walk.json"
+            canonical_sha256, references_path, verdict_paths = (
+                write_identity_gate_evidence(root)
+            )
             identity_path.write_text(
                 json.dumps(
-                    {
-                        "identityGateStatus": "identity-selected",
-                        "selection": "selected",
-                        "canonicalSha256": HASH_A,
-                        "technicalStatus": "pass",
-                        "visualVerdictIds": ["identity-visual"],
-                    },
+                    selected_identity_contract(root, canonical_sha256),
                     indent=2,
                 )
                 + "\n",
                 encoding="utf-8",
             )
             action_path.write_text(
-                json.dumps(action_contract(), indent=2) + "\n", encoding="utf-8"
+                json.dumps(
+                    action_contract(identity_sha256=canonical_sha256), indent=2
+                )
+                + "\n",
+                encoding="utf-8",
             )
             identity_bytes = identity_path.read_bytes()
             action_bytes = action_path.read_bytes()
@@ -1014,6 +1107,7 @@ class JobDependencyTest(unittest.TestCase):
                         str(SKILL_ROOT / "scripts" / "prepare_generation_jobs.py"),
                         "--identity",
                         str(identity_path),
+                        *identity_gate_cli_args(references_path, verdict_paths),
                         "--actions",
                         str(actions_path),
                         "--output",
@@ -1039,6 +1133,7 @@ class JobDependencyTest(unittest.TestCase):
                     str(SKILL_ROOT / "scripts" / "prepare_generation_jobs.py"),
                     "--identity",
                     str(identity_path),
+                    *identity_gate_cli_args(references_path, verdict_paths),
                     "--actions",
                     str(actions_path),
                     "--output",
@@ -1061,15 +1156,12 @@ class JobDependencyTest(unittest.TestCase):
             actions_path = root / "actions"
             actions_path.mkdir()
             action_path = actions_path / "walk.json"
+            canonical_sha256, references_path, verdict_paths = (
+                write_identity_gate_evidence(root)
+            )
             identity_path.write_text(
                 json.dumps(
-                    {
-                        "identityGateStatus": "identity-selected",
-                        "selection": "selected",
-                        "canonicalSha256": HASH_A,
-                        "technicalStatus": "pass",
-                        "visualVerdictIds": ["identity-visual"],
-                    },
+                    selected_identity_contract(root, canonical_sha256),
                     indent=2,
                 )
                 + "\n",
@@ -1081,6 +1173,7 @@ class JobDependencyTest(unittest.TestCase):
                 str(SKILL_ROOT / "scripts" / "prepare_generation_jobs.py"),
                 "--identity",
                 str(identity_path),
+                *identity_gate_cli_args(references_path, verdict_paths),
                 "--actions",
                 str(actions_path),
             ]
@@ -1091,7 +1184,9 @@ class JobDependencyTest(unittest.TestCase):
                 ("negative-infinity", float("-inf")),
             ):
                 with self.subTest(label=label):
-                    invalid_action = action_contract()
+                    invalid_action = action_contract(
+                        identity_sha256=canonical_sha256
+                    )
                     invalid_action["behavior"]["weight"] = value
                     action_path.write_text(
                         json.dumps(invalid_action, indent=2) + "\n",
@@ -1124,21 +1219,17 @@ class JobDependencyTest(unittest.TestCase):
             actions_path.mkdir()
             action_path = actions_path / "walk.json"
             output_path = root / "jobs.json"
+            canonical_sha256, references_path, verdict_paths = (
+                write_identity_gate_evidence(root)
+            )
             identity_path.write_text(
                 json.dumps(
-                    {
-                        "identityGateStatus": "identity-selected",
-                        "selection": "selected",
-                        "canonicalSha256": HASH_A,
-                        "technicalStatus": "pass",
-                        "visualVerdictIds": ["identity-visual"],
-                    },
-                    indent=2,
+                    selected_identity_contract(root, canonical_sha256), indent=2
                 )
                 + "\n",
                 encoding="utf-8",
             )
-            action = action_contract()
+            action = action_contract(identity_sha256=canonical_sha256)
             action["behavior"]["weight"] = int("9" * 1000)
             action_path.write_text(
                 json.dumps(action, indent=2) + "\n", encoding="utf-8"
@@ -1151,6 +1242,7 @@ class JobDependencyTest(unittest.TestCase):
                     str(SKILL_ROOT / "scripts" / "prepare_generation_jobs.py"),
                     "--identity",
                     str(identity_path),
+                    *identity_gate_cli_args(references_path, verdict_paths),
                     "--actions",
                     str(actions_path),
                     "--output",
@@ -1175,15 +1267,12 @@ class JobDependencyTest(unittest.TestCase):
                 actions_path.mkdir()
                 action_path = actions_path / "walk.json"
                 output_path = root / "jobs.json"
-                identity = {
-                    "identityGateStatus": "identity-selected",
-                    "selection": "selected",
-                    "canonicalSha256": HASH_A,
-                    "technicalStatus": "pass",
-                    "visualVerdictIds": ["identity-visual"],
-                    "projectId": "draft-pet",
-                }
-                action = action_contract()
+                canonical_sha256, references_path, verdict_paths = (
+                    write_identity_gate_evidence(root)
+                )
+                identity = selected_identity_contract(root, canonical_sha256)
+                identity["projectId"] = "draft-pet"
+                action = action_contract(identity_sha256=canonical_sha256)
                 if label == "action-id":
                     action["actionId"] = "\ud800"
                 elif label == "identity-project":
@@ -1207,6 +1296,7 @@ class JobDependencyTest(unittest.TestCase):
                         str(SKILL_ROOT / "scripts" / "prepare_generation_jobs.py"),
                         "--identity",
                         str(identity_path),
+                        *identity_gate_cli_args(references_path, verdict_paths),
                         "--actions",
                         str(actions_path),
                         "--output",
@@ -1232,6 +1322,7 @@ class JobDependencyTest(unittest.TestCase):
             actions_path = root / "actions"
             actions_path.mkdir()
             action_path = actions_path / "walk.json"
+            _, references_path, verdict_paths = write_identity_gate_evidence(root)
             action_path.write_text(
                 json.dumps(action_contract(), indent=2) + "\n", encoding="utf-8"
             )
@@ -1241,6 +1332,7 @@ class JobDependencyTest(unittest.TestCase):
                 str(SKILL_ROOT / "scripts" / "prepare_generation_jobs.py"),
                 "--identity",
                 str(identity_path),
+                *identity_gate_cli_args(references_path, verdict_paths),
                 "--actions",
                 str(actions_path),
             ]

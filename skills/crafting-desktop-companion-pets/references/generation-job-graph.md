@@ -28,6 +28,12 @@ Except for an initial identity candidate, every visual job carries the selected
 canonical identity and the relevant action inputs. A layout reference controls
 only order, placement, and safe margins.
 
+Before constructing downstream generation jobs, recompute the identity gate
+from the canonical file/hash, selected reference records, and ordered builder
+and independent verdict files. Do not trust a self-asserted
+`identityGateStatus` or opaque verdict IDs; the persisted identity contract must
+exactly match the evaluated internal-pass IDs.
+
 ## Write the generation or edit request
 
 Every generation or edit request records:
