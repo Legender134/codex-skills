@@ -15,15 +15,12 @@ EXPECTED_SKILL_FILES = {
     "references/actions-and-motion.md",
     "references/behavior-and-soak.md",
     "references/canonical-identity-and-proportions.md",
-    "references/format-runtime-core.md",
     "references/format-v2.md",
     "references/format-v3.md",
     "references/format-v4.md",
     "references/generation-job-graph.md",
     "references/identity-and-evidence.md",
     "references/nangong-wan-calibration-case.md",
-    "references/nangong-wan-quality-standard.md",
-    "references/production-and-qa.md",
     "references/repair-and-convergence.md",
     "references/visual-qa.md",
     "scripts/contracts.py",
@@ -43,13 +40,10 @@ EXPECTED_SKILL_FILES = {
     "scripts/validate_identity_gate.py",
     "scripts/validate_package.py",
     "templates/action-contract.json",
-    "templates/action-contract.md",
     "templates/evidence-ledger.md",
     "templates/identity-contract.json",
     "templates/job-manifest.json",
     "templates/project-brief.md",
-    "templates/research-brief.md",
-    "templates/review-checklist.md",
     "templates/run-summary.json",
     "templates/visual-verdict.json",
     "tests/behavior/__init__.py",
@@ -140,6 +134,45 @@ def test_project_profile_publishes_version_neutral_pet_agents() -> None:
         "pet-builder.toml": ("pet_builder", "gpt-5.6-terra", "max", "workspace-write"),
         "pet-reviewer.toml": ("pet_reviewer", "gpt-5.6-sol", "xhigh", "read-only"),
     }
+    required_references = {
+        "pet-researcher.toml": {
+            "references/identity-and-evidence.md",
+            "references/canonical-identity-and-proportions.md",
+            "references/actions-and-motion.md",
+            "references/nangong-wan-calibration-case.md",
+        },
+        "pet-builder.toml": {
+            "references/identity-and-evidence.md",
+            "references/canonical-identity-and-proportions.md",
+            "references/actions-and-motion.md",
+            "references/generation-job-graph.md",
+            "references/visual-qa.md",
+            "references/nangong-wan-calibration-case.md",
+        },
+        "pet-reviewer.toml": {
+            "references/identity-and-evidence.md",
+            "references/canonical-identity-and-proportions.md",
+            "references/visual-qa.md",
+            "references/behavior-and-soak.md",
+            "references/repair-and-convergence.md",
+            "references/nangong-wan-calibration-case.md",
+        },
+    }
+    obsolete_routes = {
+        "references/nangong-wan-quality-standard.md",
+        "references/production-and-qa.md",
+        "references/format-runtime-core.md",
+        "templates/action-contract.md",
+        "templates/research-brief.md",
+        "templates/review-checklist.md",
+    }
+    format_route_markers = {
+        "pet-researcher.toml": (
+            "after confirmation, retain only the applicable format authority"
+        ),
+        "pet-builder.toml": "Read exactly the confirmed format authority",
+        "pet-reviewer.toml": "Read exactly the selected format authority",
+    }
     for filename, (name, model, effort, sandbox) in expected.items():
         path = TEMPLATE / ".codex" / "agents" / filename
         agent = tomllib.loads(path.read_text(encoding="utf-8"))
@@ -149,14 +182,26 @@ def test_project_profile_publishes_version_neutral_pet_agents() -> None:
         assert agent["model_reasoning_effort"] == effort
         assert agent["sandbox_mode"] == sandbox
         assert "crafting-desktop-companion-pets" in instructions
-        assert all(version in instructions for version in ("v2", "v3", "v4"))
-        assert "handoff-contracts.md" not in instructions
+        normalized_instructions = " ".join(instructions.split())
         for reference in (
-            "references/nangong-wan-quality-standard.md",
-            "references/production-and-qa.md",
-            "references/format-runtime-core.md",
+            "references/format-v2.md",
+            "references/format-v3.md",
+            "references/format-v4.md",
         ):
             assert reference in instructions
+        assert "handoff-contracts.md" not in instructions
+        for reference in required_references[filename]:
+            assert reference in instructions
+        for route in obsolete_routes:
+            assert route not in instructions
+        assert "only for process calibration when relevant" in normalized_instructions
+        assert (
+            "never copy its geometry or numerical proportions to another target"
+            in normalized_instructions
+        )
+        assert format_route_markers[filename] in normalized_instructions
+        assert "mandatory process baseline" not in instructions
+        assert "mandatory review baseline" not in instructions
 
     researcher = tomllib.loads(
         (TEMPLATE / ".codex" / "agents" / "pet-researcher.toml").read_text(

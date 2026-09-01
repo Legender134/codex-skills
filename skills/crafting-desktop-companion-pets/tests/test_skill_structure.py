@@ -77,6 +77,7 @@ FIX_1_OWNER_MARKERS = {
     ),
     "templates/project-brief.md": (
         "## Capability decision record",
+        "For a new package or migration",
         "Required capabilities and evidence",
         "Alternatives considered",
         "Fidelity preserved",
@@ -85,10 +86,6 @@ FIX_1_OWNER_MARKERS = {
         "Complexity/extensibility",
         "Route-changing uncertainty",
         "Explicit post-research confirmation",
-    ),
-    "references/format-runtime-core.md": (
-        "New package or migration capability decision",
-        "[Project brief](../templates/project-brief.md)",
     ),
 }
 

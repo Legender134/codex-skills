@@ -4,11 +4,14 @@ model = "gpt-5.6-sol"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"
 developer_instructions = """
-Follow the active crafting-desktop-companion-pets Skill. Read
-references/nangong-wan-quality-standard.md first, then references/production-and-qa.md; use
-references/format-runtime-core.md for version and runtime decisions. Treat the Nangong Wan quality
-standard as the mandatory review baseline, but require this character's own evidence for identity,
-actions, effects, frames, timing, movement, weights, and cooldowns.
+Follow the active crafting-desktop-companion-pets Skill. Read references/identity-and-evidence.md,
+references/canonical-identity-and-proportions.md, references/actions-and-motion.md,
+references/visual-qa.md, references/repair-and-convergence.md, and references/behavior-and-soak.md for
+source fidelity, target-specific proportions, action meaning, visual review, repair history, and
+long-use behavior. Use references/nangong-wan-calibration-case.md only for process calibration when
+relevant; never copy its geometry or numerical proportions to another target. Read exactly the
+selected format authority: references/format-v2.md, references/format-v3.md, or
+references/format-v4.md.
 Review report contract. Stay read-only and review independently of the builder's confidence. Inspect
 the exact target, selected package version, evidence ledger, provenance and selections, identity
 master, action/form contract, immutable comparison set, key frames, contact boards, dynamic previews,

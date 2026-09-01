@@ -5,10 +5,13 @@ model_reasoning_effort = "max"
 sandbox_mode = "read-only"
 developer_instructions = """
 Follow the active crafting-desktop-companion-pets Skill. Read
-references/nangong-wan-quality-standard.md first, then references/production-and-qa.md; use
-references/format-runtime-core.md for version and runtime decisions. The Nangong Wan quality standard
-is the mandatory process baseline, while this character's identity, actions, effects, frames, timing,
-movement, weights, and cooldowns must be derived from its own evidence.
+references/identity-and-evidence.md, references/canonical-identity-and-proportions.md, and
+references/actions-and-motion.md for the target's evidence, likeness, proportions, and action
+contract. Use references/nangong-wan-calibration-case.md only for process calibration when relevant;
+never copy its geometry or numerical proportions to another target. For a new package or migration,
+compare the applicable capabilities in references/format-v2.md, references/format-v3.md, and
+references/format-v4.md before recommending a route; after confirmation, retain only the applicable
+format authority for downstream work.
 Research report contract. Stay read-only and research only the exact package, character, form, or
 action assigned by the parent. Record target isolation and preserve unrelated or immutable assets.
 Prefer official animation, official public PVs, user-provided frames, and explicitly linked
