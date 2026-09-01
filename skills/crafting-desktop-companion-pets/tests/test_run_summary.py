@@ -100,6 +100,29 @@ def verified_artifact_context(package_sha: str = HASH_A) -> dict[str, str]:
     }
 
 
+def internal_visual_passes() -> list[dict[str, object]]:
+    return [
+        {
+            "verdictId": "builder-visual-1",
+            "artifactPath": "qa/preview.webp",
+            "artifactSha256": "e" * 64,
+            "gate": "visual",
+            "decision": "pass",
+            "reviewer": "builder",
+            "reviewSequence": 1,
+        },
+        {
+            "verdictId": "independent-visual-1",
+            "artifactPath": "qa/preview.webp",
+            "artifactSha256": "e" * 64,
+            "gate": "visual",
+            "decision": "pass",
+            "reviewer": "independent",
+            "reviewSequence": 2,
+        },
+    ]
+
+
 def write_bound_evidence(
     root: Path, package_sha: str, *, include_installation: bool = False
 ) -> dict[str, object]:
@@ -435,10 +458,11 @@ class MaturityTest(unittest.TestCase):
         self.assertEqual(result["installedStatus"], "not-authorized")
         self.assertFalse(result["releaseAuthority"])
 
-    def test_user_acceptance_is_hash_bound_and_never_grants_authority(self) -> None:
+    def test_user_acceptance_cannot_replace_internal_visual_pass(self) -> None:
         result = evaluate_maturity(
             {
                 "formalGates": "not-run",
+                "internalVisualPasses": internal_visual_passes(),
                 "userAcceptance": [
                     {
                         "artifactPath": "qa/preview.webp",
@@ -446,19 +470,98 @@ class MaturityTest(unittest.TestCase):
                         "gate": "visual",
                         "decision": "pass",
                         "reviewer": "user",
+                        "reviewSequence": 3,
                     }
                 ],
                 "installAuthority": False,
                 "verifiedArtifactIndex": verified_artifact_context(),
             }
         )
-        self.assertEqual(result["visualStatus"], "pass")
+        self.assertEqual(result["visualStatus"], "not-reviewed")
+        self.assertEqual(result["userAcceptance"], [])
+        self.assertIn(
+            "INTERNAL_VISUAL_PASS_REQUIRED_BEFORE_USER_ACCEPTANCE",
+            result["blockers"],
+        )
         self.assertEqual(result["maturity"], "research-candidate")
         self.assertFalse(result["authorities"]["install"])
 
         result["authorities"]["install"] = True
         again = evaluate_maturity({"formalGates": "pass", "installAuthority": False})
         self.assertFalse(again["authorities"]["install"])
+
+    def test_user_acceptance_requires_matching_builder_and_independent_passes(
+        self,
+    ) -> None:
+        acceptance = {
+            "artifactPath": "qa/preview.webp",
+            "artifactSha256": "e" * 64,
+            "gate": "visual",
+            "decision": "pass",
+            "reviewer": "user",
+            "reviewSequence": 3,
+        }
+        complete = evaluate_maturity(
+            {
+                "formalGates": "pass",
+                "internalVisualPasses": internal_visual_passes(),
+                "userAcceptance": [acceptance],
+                "verifiedArtifactIndex": verified_artifact_context(),
+            }
+        )
+
+        self.assertEqual(complete["visualStatus"], "pass")
+        self.assertEqual(len(complete["userAcceptance"]), 1)
+        self.assertEqual(len(complete["internalVisualPasses"]), 2)
+
+        incomplete = evaluate_maturity(
+            {
+                "formalGates": "pass",
+                "internalVisualPasses": internal_visual_passes()[:1],
+                "userAcceptance": [acceptance],
+                "verifiedArtifactIndex": verified_artifact_context(),
+            }
+        )
+
+        self.assertEqual(incomplete["userAcceptance"], [])
+        self.assertIn(
+            "USER_ACCEPTANCE_0_INTERNAL_PASS_REQUIRED",
+            incomplete["blockers"],
+        )
+
+        reversed_order = internal_visual_passes()
+        reversed_order[0]["reviewSequence"] = 2
+        reversed_order[1]["reviewSequence"] = 1
+        reversed_result = evaluate_maturity(
+            {
+                "formalGates": "pass",
+                "internalVisualPasses": reversed_order,
+                "userAcceptance": [acceptance],
+                "verifiedArtifactIndex": verified_artifact_context(),
+            }
+        )
+        self.assertEqual(reversed_result["userAcceptance"], [])
+        self.assertIn(
+            "USER_ACCEPTANCE_0_INTERNAL_REVIEW_ORDER_INVALID",
+            reversed_result["blockers"],
+        )
+
+        early_acceptance = dict(acceptance, reviewSequence=2)
+        late_independent = internal_visual_passes()
+        late_independent[1]["reviewSequence"] = 3
+        early_result = evaluate_maturity(
+            {
+                "formalGates": "pass",
+                "internalVisualPasses": late_independent,
+                "userAcceptance": [early_acceptance],
+                "verifiedArtifactIndex": verified_artifact_context(),
+            }
+        )
+        self.assertEqual(early_result["userAcceptance"], [])
+        self.assertIn(
+            "USER_ACCEPTANCE_0_INTERNAL_REVIEW_ORDER_INVALID",
+            early_result["blockers"],
+        )
 
     def test_every_authority_requires_an_exact_boolean(self) -> None:
         for field in (
@@ -508,6 +611,7 @@ class MaturityTest(unittest.TestCase):
             "formalGates": "pass",
             "runtimeEvidence": runtime_evidence(),
             "verifiedArtifactIndex": verified_artifact_context(),
+            "internalVisualPasses": internal_visual_passes(),
             "userAcceptance": [
                 {
                     "artifactPath": "qa/preview.webp",
@@ -515,15 +619,18 @@ class MaturityTest(unittest.TestCase):
                     "gate": "visual",
                     "decision": "pass",
                     "reviewer": "user",
+                    "reviewSequence": 3,
                 }
             ],
         }
         result = evaluate_maturity(run)
         run["runtimeEvidence"][0]["kind"] = "unknown"  # type: ignore[index]
+        run["internalVisualPasses"][0]["reviewer"] = "changed"  # type: ignore[index]
         run["userAcceptance"][0]["reviewer"] = "changed"  # type: ignore[index]
         run["verifiedArtifactIndex"]["package.bin"] = "f" * 64  # type: ignore[index]
 
         self.assertEqual(result["runtimeStatus"], "pass")
+        self.assertEqual(result["internalVisualPasses"][0]["reviewer"], "builder")
         self.assertEqual(result["userAcceptance"][0]["reviewer"], "user")
 
     def test_runtime_evidence_without_a_verified_inventory_context_cannot_advance(self) -> None:
@@ -1787,6 +1894,7 @@ class RunSummaryTest(unittest.TestCase):
                             "gate": "visual",
                             "decision": "pass",
                             "reviewer": "user",
+                            "reviewSequence": 3,
                         }
                     ],
                     "verifiedArtifacts": [

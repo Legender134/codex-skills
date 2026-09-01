@@ -37,6 +37,30 @@ Measurements diagnose silhouette and drift. They cannot decide beauty,
 coordination, age impression, or source likeness. A technical pass never
 creates a visual pass.
 
+## Apply the aesthetic coherence gate
+
+Judge beauty as target-specific visual coherence, not a generic attractiveness
+score and not a task delegated to the user. Compare the selected identity and
+proportion evidence, candidate original, actual-runtime-size candidate, and
+silhouette. Record observations for:
+
+- source likeness, age/character impression, expression, and intentional style;
+- head/body relation, shoulder–torso–waist–hip flow, limb length, clothing mass,
+  and where the silhouette carries its maximum width;
+- balanced positive/negative space, readable separation of arms/body and legs,
+  stable stance/grounding, and a deliberate visual center;
+- hierarchy of face, costume blocks, props, color, and detail at desktop size;
+  and
+- pose appeal and, when applicable, motion arcs, rhythm, shape continuity, and
+  controlled hair/garment response.
+
+Reject a candidate that visibly reads as unintended oversized-head, childlike,
+short/stout, swollen, top-heavy, pinched, weakly grounded, or whose wide garment
+hides an unresolved body. Adapt these symptoms to the selected morphology; the
+target evidence, not another pet or a generic beauty template, governs the
+desired result. A named internal aesthetic concern cannot pass because metrics
+are within tolerance, downstream work exists, or the user could identify it.
+
 ## Preserve recognition at reduced scale
 
 Preserve high-salience recognition before tertiary texture. Simplify tiny
@@ -72,9 +96,12 @@ generated → technical-candidate → visual-candidate → identity-selected
 The gate can report `identity-candidate` while evidence is valid but the
 canonical file/hash is absent. A canonical candidate needs a readable file and
 matching SHA-256, selected reference IDs, technical status `pass`, and an
-actual-size visual pass whose reviewed artifact hash matches the canonical hash.
-Only a `user` or `independent` reviewer can supply that visual pass. A
-technical verdict that claims visual acceptance remains a blocker
+actual-size builder self-review followed by an independent visual pass; both
+reviewed artifact hashes must match the canonical hash. Supply verdicts in
+review order and retain both accepted verdict IDs. A later user verdict records
+acceptance or a genuinely irreducible subjective choice; it cannot replace or
+precede internal review. A technical verdict that claims visual acceptance
+remains a blocker
 (`TECHNICAL_CANNOT_GRANT_VISUAL_PASS`).
 
 Store the canonical path/hash and gate evidence in the
@@ -86,7 +113,7 @@ Graph](generation-job-graph.md) for the deterministic descendant handling.
 
 Do not select a canonical identity when high-salience target evidence is
 missing, its uncertainty is unapproved, the actual-size review fails, or the
-required independent/user verdict is unavailable. For local anatomy or frame
-defects after selection, read [Repair and
+required builder self-review or independent internal review is unavailable. For
+local anatomy or frame defects after selection, read [Repair and
 Convergence](repair-and-convergence.md) rather than reopening the identity gate
 without a causal reason.

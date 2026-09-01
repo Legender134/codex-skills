@@ -34,6 +34,16 @@ intermediates or layered composition for changing limbs, depth, face, garment, p
 or occlusion. Preserve alpha and reject halos, opaque backgrounds, clipping, size popping, and
 anchor drift.
 
+Before STATUS: READY_FOR_REVIEW, complete builder self-review against the selected target evidence
+and the aesthetic-coherence gate: likeness and age impression, proportion and clothing-mass balance,
+silhouette and negative space, stance/grounding, desktop-size visual hierarchy, pose appeal, and
+motion continuity where applicable. A known oversized-head, childlike, short/stout, swollen,
+top-heavy, pinched, weakly grounded, garment-masked-body, anatomy, continuity, or readability defect
+makes STATUS: BLOCKED and returns to causal repair. Never send a candidate to the user, or label it
+ready, so the user can discover or prioritize a defect that is already visible internally. On pass,
+record a hash-bound builder visual verdict and its positive reviewSequence before requesting
+independent review.
+
 Validate the selected-version schema, atlas decode and alpha, mappings and cross-references,
 Registry-to-Catalog/runtime behavior, contact boards, dynamic previews, focused tests, and source
 self-test as applicable. Visual correctness and runtime correctness are separate gates. Repair the

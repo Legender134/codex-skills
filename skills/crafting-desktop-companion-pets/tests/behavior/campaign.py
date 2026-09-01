@@ -16,6 +16,7 @@ SCENARIO_SEQUENCE = {
     "visual-versus-technical": ("B02", "B08", "B02", "B08", "B02"),
     "motion-and-repair": ("B07", "B09", "B07", "B09", "B07"),
     "format-runtime-authority": ("B10", "B11", "B12", "B10", "B11"),
+    "aesthetic-and-user-handoff": ("B13", "B13", "B13", "B13", "B13"),
 }
 REQUIRED_VARIANTS = frozenset(SCENARIO_SEQUENCE)
 SKILL_ROOT = Path(__file__).resolve().parents[2]
@@ -181,7 +182,7 @@ def load_campaign_summary(root: Path) -> dict[str, object]:
         if unexpected:
             details.append(f"unexpected {', '.join(unexpected)}")
         raise ValueError(
-            f"{campaign_root}: expected the four high-risk variants "
+            f"{campaign_root}: expected the five high-risk variants "
             f"({'; '.join(details)})"
         )
 

@@ -9,6 +9,7 @@ import sys
 import tempfile
 
 from contracts import (
+    evaluate_identity_gate,
     validate_action_contract,
     validate_job_manifest,
     validate_json_structure,
@@ -67,9 +68,26 @@ def _is_sha256(value: object) -> bool:
     return isinstance(value, str) and _SHA256_PATTERN.fullmatch(value) is not None
 
 
-def _selected_identity_root(identity: dict[str, object]) -> tuple[dict[str, object], str]:
+def _selected_identity_root(
+    identity: dict[str, object],
+    references: list[dict[str, object]],
+    verdicts: list[dict[str, object]],
+) -> tuple[dict[str, object], str]:
     canonical_sha256 = identity.get("canonicalSha256")
     visual_verdict_ids = identity.get("visualVerdictIds")
+    gate_result = evaluate_identity_gate(identity, references, verdicts)
+    if gate_result["status"] != "identity-selected":
+        issue_codes = sorted(
+            {
+                issue.get("code", "IDENTITY_GATE_BLOCKED")
+                for issue in gate_result.get("blockingIssues", [])
+                if isinstance(issue, dict)
+            }
+        )
+        detail = f" ({', '.join(issue_codes)})" if issue_codes else ""
+        raise SelectionError(
+            f"evaluated identity gate must be identity-selected{detail}"
+        )
     if identity.get("identityGateStatus") != "identity-selected":
         raise SelectionError("identityGateStatus must be identity-selected")
     if identity.get("selection") != "selected":
@@ -85,7 +103,19 @@ def _selected_identity_root(identity: dict[str, object]) -> tuple[dict[str, obje
         raise SelectionError("identity visualVerdictIds must contain non-empty text ids")
     if not visual_verdict_ids:
         raise SelectionError("identity requires at least one visual verdict id")
-    visual_verdict_id = sorted(set(visual_verdict_ids))[0]
+    accepted_verdict_ids = gate_result["acceptedVerdictIds"]
+    if visual_verdict_ids != accepted_verdict_ids:
+        raise SelectionError(
+            "identity visualVerdictIds must exactly match evaluated internal passes"
+        )
+    accepted_ids = set(accepted_verdict_ids)
+    visual_verdict_id = next(
+        verdict["verdictId"]
+        for verdict in verdicts
+        if verdict.get("verdictId") in accepted_ids
+        and isinstance(verdict.get("reviewer"), dict)
+        and verdict["reviewer"].get("type") == "independent"
+    )
     return (
         {
             "id": "identity",
@@ -149,10 +179,15 @@ def _resolve_cli_paths(
 
 
 def build_generation_jobs(
-    identity: dict[str, object], actions: list[dict[str, object]]
+    identity: dict[str, object],
+    actions: list[dict[str, object]],
+    references: list[dict[str, object]],
+    verdicts: list[dict[str, object]],
 ) -> dict[str, object]:
     """Build a deterministic identity-rooted generation graph without side effects."""
-    root_job, canonical_sha256 = _selected_identity_root(identity)
+    root_job, canonical_sha256 = _selected_identity_root(
+        identity, references, verdicts
+    )
     jobs: list[dict[str, object]] = [root_job]
     for action in sorted(actions, key=lambda item: item["actionId"]):
         action_id = action["actionId"]
@@ -239,6 +274,8 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         description="Create deterministic DesktopCompanion generation jobs."
     )
     parser.add_argument("--identity", required=True, type=Path)
+    parser.add_argument("--references", required=True, type=Path)
+    parser.add_argument("--verdict", action="append", default=[], type=Path)
     parser.add_argument("--actions", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     return parser.parse_args(argv)
@@ -250,12 +287,27 @@ def main(argv: list[str] | None = None) -> int:
         identity_path, actions_path, output_path = _resolve_cli_paths(
             args.identity, args.actions, args.output
         )
+        references_path = args.references.resolve(strict=False)
+        verdict_paths = [path.resolve(strict=False) for path in args.verdict]
+        if output_path in {identity_path, references_path, *verdict_paths}:
+            raise InputError("output must not replace identity-gate evidence")
         identity = _load_json_object(identity_path, "identity contract")
-        _, canonical_sha256 = _selected_identity_root(identity)
+        reference_payload = _load_json_object(references_path, "references")
+        references = reference_payload.get("sources")
+        if not isinstance(references, list) or not all(
+            isinstance(reference, dict) for reference in references
+        ):
+            raise InputError("references.sources must be a list of objects")
+        verdicts = [
+            _load_json_object(path, "visual verdict") for path in verdict_paths
+        ]
+        _, canonical_sha256 = _selected_identity_root(
+            identity, references, verdicts
+        )
         actions, action_paths = _read_actions(actions_path, canonical_sha256)
         if output_path in action_paths:
             raise InputError("output must not replace an action contract")
-        manifest = build_generation_jobs(identity, actions)
+        manifest = build_generation_jobs(identity, actions, references, verdicts)
         _write_json_atomically(output_path, manifest)
     except SelectionError as error:
         print(error, file=sys.stderr)

@@ -14,6 +14,12 @@
     "B09": ["repair scope follows causal dependency"],
     "B10": ["format follows capability requirements"],
     "B11": ["schema pass is not runtime pass"],
-    "B12": ["installation and publication authority are not inferred"]
+    "B12": ["installation and publication authority are not inferred"],
+    "B13": [
+      "aesthetic coherence remains a visual gate when diagnostics pass",
+      "known internal defects return to repair before user presentation",
+      "independent internal pass precedes user acceptance",
+      "the user is not used as fallback quality assurance"
+    ]
   }
 }

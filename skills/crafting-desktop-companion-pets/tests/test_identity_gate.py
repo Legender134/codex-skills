@@ -94,13 +94,126 @@ class IdentityGateTest(unittest.TestCase):
                 "reviewer": {"type": "independent", "id": "reviewer-1"},
                 "observations": ["Actual-size identity review is recorded."],
             }
-            selected_result = evaluate_identity_gate(
+            independent_only = evaluate_identity_gate(
                 contract, references, [technical_verdict, visual_verdict]
+            )
+
+            self.assertEqual(independent_only["status"], "visual-candidate")
+            self.assertIn(
+                "BUILDER_SELF_REVIEW_PASS_REQUIRED",
+                {issue["code"] for issue in independent_only["blockingIssues"]},
+            )
+
+            builder_verdict = {
+                "verdictId": "builder-visual-1",
+                "gate": "visual",
+                "decision": "pass",
+                "reviewScale": "actual-runtime-size",
+                "artifactSha256": canonical_sha256,
+                "reviewer": {"type": "builder", "id": "builder-1"},
+                "observations": ["Builder actual-size self-review is recorded."],
+            }
+            selected_result = evaluate_identity_gate(
+                contract,
+                references,
+                [technical_verdict, builder_verdict, visual_verdict],
             )
 
             self.assertEqual(selected_result["status"], "identity-selected")
             self.assertEqual(selected_result["canonicalSha256"], canonical_sha256)
-            self.assertEqual(selected_result["acceptedVerdictIds"], ["visual-1"])
+            self.assertEqual(
+                selected_result["acceptedVerdictIds"],
+                ["builder-visual-1", "visual-1"],
+            )
+
+    def test_user_visual_pass_cannot_replace_independent_internal_review(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            canonical = Path(raw) / "canonical.png"
+            canonical.write_bytes(b"canonical identity")
+            canonical_sha256 = sha256_file(canonical)
+            contract = {
+                "identityRoute": "source-faithful",
+                "referenceIds": ["identity-1", "proportion-1"],
+                "canonicalPath": str(canonical),
+                "canonicalSha256": canonical_sha256,
+                "technicalStatus": "pass",
+                "authority": {"identityUncertaintyApproved": False},
+            }
+            references = [
+                {
+                    "id": "identity-1",
+                    "roles": ["identity"],
+                    "allowedUses": ["canonical-identity"],
+                    "evidenceClass": "current-official",
+                },
+                {
+                    "id": "proportion-1",
+                    "roles": ["proportion"],
+                    "allowedUses": ["canonical-identity"],
+                    "evidenceClass": "same-character-current",
+                },
+            ]
+            user_verdict = {
+                "verdictId": "user-visual-1",
+                "gate": "visual",
+                "decision": "pass",
+                "reviewScale": "actual-runtime-size",
+                "artifactSha256": canonical_sha256,
+                "reviewer": {"type": "user", "id": "user-1"},
+                "observations": ["The user accepted the candidate."],
+            }
+
+            result = evaluate_identity_gate(contract, references, [user_verdict])
+
+            self.assertEqual(result["status"], "visual-candidate")
+            self.assertEqual(result["acceptedVerdictIds"], [])
+            self.assertIn(
+                "INDEPENDENT_VISUAL_PASS_REQUIRED_BEFORE_USER_HANDOFF",
+                {issue["code"] for issue in result["blockingIssues"]},
+            )
+
+            builder_verdict = {
+                "verdictId": "builder-visual-1",
+                "gate": "visual",
+                "decision": "pass",
+                "reviewScale": "actual-runtime-size",
+                "artifactSha256": canonical_sha256,
+                "reviewer": {"type": "builder", "id": "builder-1"},
+                "observations": ["Builder actual-size self-review is recorded."],
+            }
+            independent_verdict = {
+                "verdictId": "independent-visual-1",
+                "gate": "visual",
+                "decision": "pass",
+                "reviewScale": "actual-runtime-size",
+                "artifactSha256": canonical_sha256,
+                "reviewer": {"type": "independent", "id": "reviewer-1"},
+                "observations": ["Independent actual-size review is recorded."],
+            }
+            early_user_result = evaluate_identity_gate(
+                contract,
+                references,
+                [builder_verdict, user_verdict, independent_verdict],
+            )
+
+            self.assertEqual(early_user_result["status"], "visual-candidate")
+            self.assertIn(
+                "USER_HANDOFF_PRECEDED_INTERNAL_VISUAL_PASS",
+                {issue["code"] for issue in early_user_result["blockingIssues"]},
+            )
+
+            correctly_ordered = evaluate_identity_gate(
+                contract,
+                references,
+                [builder_verdict, independent_verdict, user_verdict],
+            )
+            self.assertEqual(correctly_ordered["status"], "identity-selected")
+            self.assertEqual(
+                correctly_ordered["acceptedVerdictIds"],
+                ["builder-visual-1", "independent-visual-1"],
+            )
 
     def test_prohibited_reference_cannot_select_source_faithful_identity(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
@@ -195,13 +308,21 @@ class IdentityGateTest(unittest.TestCase):
                 "reviewer": {"type": "independent", "id": "reviewer-1"},
                 "observations": ["Actual-size identity review is recorded."],
             }
+            builder_verdict = {
+                **verdict,
+                "verdictId": "builder-visual-1",
+                "reviewer": {"type": "builder", "id": "builder-1"},
+                "observations": ["Builder actual-size self-review is recorded."],
+            }
 
-            without_record = evaluate_identity_gate(contract, [], [verdict])
+            without_record = evaluate_identity_gate(
+                contract, [], [builder_verdict, verdict]
+            )
 
             self.assertEqual(without_record["status"], "blocked")
 
             contract["uncertainties"] = [{"subject": "proportion evidence"}]
-            with_record = evaluate_identity_gate(contract, [], [verdict])
+            with_record = evaluate_identity_gate(contract, [], [builder_verdict, verdict])
 
             self.assertEqual(with_record["status"], "identity-selected")
 

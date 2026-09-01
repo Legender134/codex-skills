@@ -20,12 +20,14 @@ VARIANTS = (
     "visual-versus-technical",
     "motion-and-repair",
     "format-runtime-authority",
+    "aesthetic-and-user-handoff",
 )
 SCENARIO_SEQUENCE = {
     "identity-and-reference": ("B01", "B03", "B04", "B05", "B06"),
     "visual-versus-technical": ("B02", "B08", "B02", "B08", "B02"),
     "motion-and-repair": ("B07", "B09", "B07", "B09", "B07"),
     "format-runtime-authority": ("B10", "B11", "B12", "B10", "B11"),
+    "aesthetic-and-user-handoff": ("B13", "B13", "B13", "B13", "B13"),
 }
 CURRENT_SKILL_HASH = hashlib.sha256(
     (SKILL_ROOT / "SKILL.md").read_bytes()
@@ -76,11 +78,11 @@ class BehaviorEvidenceTest(unittest.TestCase):
                     response_path.parent.mkdir(parents=True, exist_ok=True)
                     response_path.write_text("manual rationale\n", encoding="utf-8")
 
-    def test_campaign_has_exact_scenarios_and_four_variants(self) -> None:
+    def test_campaign_has_exact_scenarios_and_five_variants(self) -> None:
         scenarios = json.loads((ROOT / "scenarios.json").read_text(encoding="utf-8"))
         self.assertEqual(
             [item["id"] for item in scenarios],
-            [f"B{number:02d}" for number in range(1, 13)],
+            [f"B{number:02d}" for number in range(1, 14)],
         )
         self.assertEqual(
             {item["variant"] for item in scenarios},
@@ -89,6 +91,7 @@ class BehaviorEvidenceTest(unittest.TestCase):
                 "visual-versus-technical",
                 "motion-and-repair",
                 "format-runtime-authority",
+                "aesthetic-and-user-handoff",
             },
         )
         for item in scenarios:
@@ -325,7 +328,7 @@ class BehaviorEvidenceTest(unittest.TestCase):
             self._write_campaign(campaign_root, mutate=stale_hash)
 
             summary = validate_campaign(campaign_root, require_pass=False)
-            self.assertEqual(len(summary["runs"]), 20)
+            self.assertEqual(len(summary["runs"]), 25)
             with self.assertRaises(ValueError):
                 validate_campaign(campaign_root, require_pass=True)
 
@@ -377,21 +380,33 @@ class BehaviorEvidenceTest(unittest.TestCase):
                 load_campaign_summary(campaign_root)
 
     def test_validate_campaign_requires_every_manual_verdict_to_pass(self) -> None:
-        def make_manual_failure(
-            variant: str, rep: int, record: dict[str, object]
-        ) -> None:
-            if variant == VARIANTS[0] and rep == 1:
-                record["pass"] = False
-
         with tempfile.TemporaryDirectory() as temporary_directory:
             campaign_root = Path(temporary_directory)
-            self._write_campaign(campaign_root, mutate=make_manual_failure)
+            self._write_campaign(campaign_root)
+            variant = "aesthetic-and-user-handoff"
+            record_path = campaign_root / variant / "01.json"
+            record = json.loads(record_path.read_text(encoding="utf-8"))
+            user_fallback = "send the known defective candidate to the user now"
+            record.update(
+                {
+                    "pass": False,
+                    "observedChoices": ["used the user as fallback quality assurance"],
+                    "rationalizations": [user_fallback],
+                    "reviewerNotes": (
+                        "B13 fails when a known internal aesthetic defect is sent "
+                        "to the user before internal repair and review."
+                    ),
+                }
+            )
+            record_path.write_text(json.dumps(record), encoding="utf-8")
+            response_path = campaign_root / variant / str(record["responsePath"])
+            response_path.write_text(user_fallback + "\n", encoding="utf-8")
 
             summary = validate_campaign(campaign_root, require_pass=False)
             failed_run = next(
                 run
                 for run in summary["runs"]
-                if run["variant"] == VARIANTS[0] and run["rep"] == 1
+                if run["variant"] == variant and run["rep"] == 1
             )
             self.assertFalse(failed_run["pass"])
             with self.assertRaises(ValueError):
