@@ -1,72 +1,17 @@
-# DesktopCompanion Pet Research Brief
+# Research Brief Route
 
-## Nangong Wan standard transfer
+Use this retained human route before a new pet, identity route decision, or
+format migration. Write the human scope and authority record in [Project
+brief](project-brief.md), then record each source in [Evidence
+ledger](evidence-ledger.md).
 
-- Quality standard reviewed:
-- Decision order/gates copied from the standard:
-- Character-specific identity/actions/effects/parameters that must be newly derived:
-- Historical Nangong Wan values explicitly not treated as defaults:
-- Current approved Nangong Wan tangible baseline paths/hashes, or unavailable limitation:
+Use [Identity contract](identity-contract.json) when the selected identity,
+canonical artifact, uncertainty, technical evidence, and visual evidence need
+machine-readable state. Read [Identity and
+Evidence](../references/identity-and-evidence.md) before filling either record;
+read exactly the applicable [Format v2](../references/format-v2.md), [Format
+v3](../references/format-v3.md), or [Format v4](../references/format-v4.md)
+before confirming a package route.
 
-## Target lock
-
-| Field | Decision/evidence |
-|---|---|
-| Character and continuity | |
-| Exact era/episode range | |
-| Form and costume | |
-| Required proportions/style | |
-| Explicit exclusions | |
-| New package or exact repair target | |
-| Immutable comparison set | |
-
-## Evidence ledger
-
-| Claim | Source + locator | Evidence class | Source role | Allowed use | Confidence/conflict | Status | Selection |
-|---|---|---|---|---|---|---|---|
-| | | | | | | | |
-
-Evidence classes: direct observation, corroborated observation, same-character historical motion supplement, controlled inference, prohibited/unverified.
-
-## Identity master
-
-| Feature | Selected rule | Governing evidence | Status | Selection | Actual-size check |
-|---|---|---|---|---|---|
-| Silhouette/proportion | | | | | |
-| Face/age/marks | | | | | |
-| Hair/ornaments | | | | | |
-| Costume/palette | | | | | |
-| Asymmetry | | | | | |
-| Props/weapons | | | | | |
-| Body occupancy/anchor | | | | | |
-
-- Provisional/final review scale:
-- Effective canvas/cell and rendered body bounds:
-- OS/DPI scale and display:
-- High-salience fields lacking current direct/corroborated evidence:
-- Fresh-context reviewer and result:
-
-## Effect ownership
-
-| Effect/action | Confirmed caster | Origin/travel/peak/decay evidence | Whitelist | Blacklist | Status | Selection |
-|---|---|---|---|---|---|---|
-| | | | | | | |
-
-## Capability inventory and format decision
-
-| Capability | Required? | Evidence | v2 | v3 | v4 | Uncertainty |
-|---|---|---|---|---|---|---|
-| Forms/transformations | | | | | | |
-| Dynamic actions/timing | | | | | | |
-| Wide/layered effects | | | | | | |
-| Gaze | | | | | | |
-| Sequences/restoration | | | | | | |
-| Autoplay grouping | | | | | | |
-
-- Recommended version:
-- Fidelity preserved:
-- Fidelity omitted by alternatives:
-- Complexity/extensibility:
-- Unresolved route-changing uncertainty:
-- Post-research user confirmation:
-- Next gate:
+This Markdown route intentionally does not restate JSON field definitions. The
+JSON records are the maintained field contracts.

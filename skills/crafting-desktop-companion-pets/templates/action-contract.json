@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "projectId": "draft-pet",
+  "identityRoute": "source-faithful",
+  "formatRoute": "undecided",
+  "status": "draft",
+  "selection": "candidate",
+  "actionId": null,
+  "family": null,
+  "riskClass": null,
+  "identitySha256": null,
+  "desktopRole": null,
+  "phases": [],
+  "worldMotionPhaseIds": [],
+  "stableFeatures": [],
+  "allowedChanges": [],
+  "forbiddenChanges": [],
+  "interrupt": {
+    "safePhaseIds": [],
+    "recoveryAction": null
+  },
+  "behavior": {
+    "manualEligible": false,
+    "autoplayEligible": false,
+    "pool": null,
+    "weight": null,
+    "cooldownMs": null,
+    "sharedGroup": null,
+    "repeatLimit": null,
+    "priority": null,
+    "environmentalConditions": [],
+    "direction": null,
+    "movement": {
+      "distanceBasis": null,
+      "screenFraction": null,
+      "runtimeFormula": null,
+      "runtimeEvidenceSha256": null,
+      "boundaryPolicy": null
+    },
+    "cooldownException": null
+  },
+  "technicalStatus": "unverified",
+  "visualStatus": "not-reviewed",
+  "visualVerdictIds": [],
+  "authority": {
+    "identityUncertaintyApproved": false,
+    "install": false,
+    "integrate": false,
+    "publish": false
+  }
+}

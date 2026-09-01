@@ -1,1 +1,3 @@
 * text=auto eol=lf
+# These provenance fixtures must remain byte-identical to their runtime manifests.
+skills/crafting-desktop-companion-pets/tests/fixtures/*/pet.json binary
