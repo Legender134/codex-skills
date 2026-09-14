@@ -1,0 +1,838 @@
+import errno
+import hashlib
+import json
+import stat
+import tempfile
+import unittest
+from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
+
+from codex_routing.errors import RoutingConfigError
+from codex_routing.managed_files import (
+    FileUpdate,
+    apply_transaction,
+    merge_managed_block,
+    rollback_transaction,
+)
+
+
+BEGIN = b"<!-- BEGIN CODEX ROUTING -->"
+END = b"<!-- END CODEX ROUTING -->"
+
+
+class ManagedFilesTests(unittest.TestCase):
+    def assert_no_temporary_files(self, root: Path) -> None:
+        self.assertEqual(list(root.rglob("*.tmp")), [])
+
+    def test_second_publish_failure_restores_first_file(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            first = root / "config.toml"
+            second = root / "AGENTS.md"
+            first.write_bytes(b"before-config\n")
+            second.write_bytes(b"before-agents\n")
+            calls = 0
+
+            def fail_second(source: Path, destination: Path) -> None:
+                nonlocal calls
+                calls += 1
+                if calls == 2:
+                    raise OSError("injected publish failure")
+                source.replace(destination)
+
+            updates = (
+                FileUpdate(first, b"after-config\n"),
+                FileUpdate(second, b"after-agents\n"),
+            )
+            with self.assertRaisesRegex(Exception, "publish failure"):
+                apply_transaction(updates, root / "backups", replace=fail_second)
+            self.assertEqual(first.read_bytes(), b"before-config\n")
+            self.assertEqual(second.read_bytes(), b"before-agents\n")
+            self.assert_no_temporary_files(root)
+
+    def test_manifest_publish_then_raise_removes_owned_manifest_and_restores_files(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            first = root / "config.toml"
+            second = root / "AGENTS.md"
+            first.write_bytes(b"before-config\n")
+            backup_root = root / "backups"
+
+            def publish_manifest_then_raise(source: Path, destination: Path) -> None:
+                source.replace(destination)
+                if destination.name == "manifest.json":
+                    raise OSError("injected post-publish manifest failure")
+
+            with self.assertRaisesRegex(RoutingConfigError, "post-publish manifest"):
+                apply_transaction(
+                    (
+                        FileUpdate(first, b"after-config\n"),
+                        FileUpdate(second, b"after-agents\n"),
+                    ),
+                    backup_root,
+                    replace=publish_manifest_then_raise,
+                )
+
+            self.assertEqual(first.read_bytes(), b"before-config\n")
+            self.assertFalse(second.exists())
+            self.assertFalse(list(backup_root.rglob("manifest.json")))
+            self.assertFalse(list(backup_root.rglob("manifest.pending.json")))
+            self.assert_no_temporary_files(root)
+
+    def test_manifest_publish_then_foreign_rebind_preserves_foreign_manifest(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            destination = root / "config.toml"
+            destination.write_bytes(b"before\n")
+            backup_root = root / "backups"
+            foreign = b"foreign manifest\n"
+
+            def publish_then_rebind_foreign(source: Path, target: Path) -> None:
+                source.replace(target)
+                if target.name == "manifest.json":
+                    target.unlink()
+                    target.write_bytes(foreign)
+                    raise OSError("injected foreign manifest rebind")
+
+            with self.assertRaisesRegex(RoutingConfigError, "foreign manifest rebind"):
+                apply_transaction(
+                    (FileUpdate(destination, b"installed\n"),),
+                    backup_root,
+                    replace=publish_then_rebind_foreign,
+                )
+
+            manifests = list(backup_root.rglob("manifest.json"))
+            self.assertEqual(destination.read_bytes(), b"before\n")
+            self.assertEqual(len(manifests), 1)
+            self.assertEqual(manifests[0].read_bytes(), foreign)
+            self.assertFalse(list(backup_root.rglob("manifest.pending.json")))
+            self.assert_no_temporary_files(root)
+
+    def test_manifest_publish_then_same_inode_rewrite_preserves_foreign_bytes(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            destination = root / "config.toml"
+            destination.write_bytes(b"before\n")
+            backup_root = root / "backups"
+            foreign = b"foreign manifest rewritten in place\n"
+            rewrite_kept_inode = False
+
+            def publish_then_rewrite_in_place(source: Path, target: Path) -> None:
+                nonlocal rewrite_kept_inode
+                source.replace(target)
+                if target.name == "manifest.json":
+                    published_inode = target.stat().st_ino
+                    target.write_bytes(foreign)
+                    rewrite_kept_inode = target.stat().st_ino == published_inode
+                    raise OSError("injected same-inode manifest rewrite")
+
+            with self.assertRaises(RoutingConfigError) as caught:
+                apply_transaction(
+                    (FileUpdate(destination, b"installed\n"),),
+                    backup_root,
+                    replace=publish_then_rewrite_in_place,
+                )
+
+            manifests = list(backup_root.rglob("manifest.json"))
+            message = str(caught.exception)
+            self.assertIn("injected same-inode manifest rewrite", message)
+            self.assertIn("owned temporary path content changed", message)
+            self.assertTrue(rewrite_kept_inode)
+            self.assertEqual(destination.read_bytes(), b"before\n")
+            self.assertEqual(len(manifests), 1)
+            self.assertEqual(manifests[0].read_bytes(), foreign)
+            self.assertFalse(list(backup_root.rglob("manifest.pending.json")))
+            self.assert_no_temporary_files(root)
+
+    def test_apply_failure_never_restores_an_unattempted_matching_path(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            first = root / "a.toml"
+            second = root / "b.md"
+            third = root / "c.toml"
+            first.write_bytes(b"before-a\n")
+            second.write_bytes(b"before-b\n")
+            third.write_bytes(b"before-c\n")
+
+            def fail_second_after_concurrent_third_change(
+                source: Path, destination: Path
+            ) -> None:
+                if destination == second:
+                    third.write_bytes(b"installed-c\n")
+                    raise OSError("injected second publish failure")
+                source.replace(destination)
+
+            with self.assertRaisesRegex(RoutingConfigError, "second publish failure"):
+                apply_transaction(
+                    (
+                        FileUpdate(first, b"installed-a\n"),
+                        FileUpdate(second, b"installed-b\n"),
+                        FileUpdate(third, b"installed-c\n"),
+                    ),
+                    root / "backups",
+                    replace=fail_second_after_concurrent_third_change,
+                )
+
+            self.assertEqual(first.read_bytes(), b"before-a\n")
+            self.assertEqual(second.read_bytes(), b"before-b\n")
+            self.assertEqual(third.read_bytes(), b"installed-c\n")
+            self.assert_no_temporary_files(root)
+
+    def test_stage_creation_is_exclusive_and_preserves_a_foreign_collision(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            destination = root / "config.toml"
+            collision = root / ".config.toml.codex-routing-foreign.tmp"
+            stage = root / ".config.toml.codex-routing-owned.tmp"
+            collision.write_bytes(b"foreign-temp\n")
+
+            with mock.patch(
+                "codex_routing.managed_files._stage_candidate",
+                side_effect=(collision, stage),
+            ):
+                result = apply_transaction(
+                    (FileUpdate(destination, b"installed\n"),), root / "backups"
+                )
+
+            self.assertEqual(result.changed_paths, (destination,))
+            self.assertEqual(destination.read_bytes(), b"installed\n")
+            self.assertEqual(collision.read_bytes(), b"foreign-temp\n")
+            self.assertFalse(stage.exists())
+            self.assertEqual(list(root.rglob("*.tmp")), [collision])
+
+    def test_stage_replaced_during_write_is_never_adopted_or_published(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            destination = root / "config.toml"
+            destination.write_bytes(b"before\n")
+            stage = root / ".config.toml.codex-routing-install-fixed.tmp"
+            module = __import__("codex_routing.managed_files", fromlist=["_write_fd"])
+            real_write = module._write_fd
+
+            def replace_stage(fd: int, payload: bytes) -> None:
+                real_write(fd, payload)
+                if stage.exists():
+                    stage.unlink()
+                    stage.write_bytes(b"foreign-stage\n")
+
+            with (
+                mock.patch(
+                    "codex_routing.managed_files._stage_candidate",
+                    return_value=stage,
+                ),
+                mock.patch(
+                    "codex_routing.managed_files._write_fd",
+                    side_effect=replace_stage,
+                ),
+            ):
+                with self.assertRaisesRegex(RoutingConfigError, "changed during write"):
+                    apply_transaction(
+                        (FileUpdate(destination, b"installed\n"),), root / "backups"
+                    )
+
+            self.assertEqual(destination.read_bytes(), b"before\n")
+            self.assertEqual(stage.read_bytes(), b"foreign-stage\n")
+
+    def test_backup_replaced_during_write_is_never_adopted(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            destination = root / "config.toml"
+            destination.write_bytes(b"before\n")
+            backup_root = root / "backups"
+            module = __import__("codex_routing.managed_files", fromlist=["_write_fd"])
+            real_write = module._write_fd
+            replacement: Path | None = None
+
+            def replace_backup(fd: int, payload: bytes) -> None:
+                nonlocal replacement
+                real_write(fd, payload)
+                candidates = list(backup_root.rglob("*.bak"))
+                if candidates and replacement is None:
+                    replacement = candidates[0]
+                    replacement.unlink()
+                    replacement.write_bytes(b"foreign-backup\n")
+
+            with mock.patch(
+                "codex_routing.managed_files._write_fd",
+                side_effect=replace_backup,
+            ):
+                with self.assertRaisesRegex(RoutingConfigError, "changed during write"):
+                    apply_transaction(
+                        (FileUpdate(destination, b"installed\n"),), backup_root
+                    )
+
+            self.assertEqual(destination.read_bytes(), b"before\n")
+            self.assertIsNotNone(replacement)
+            assert replacement is not None
+            self.assertEqual(replacement.read_bytes(), b"foreign-backup\n")
+
+    def test_pending_manifest_replaced_during_write_is_never_adopted(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            destination = root / "new.toml"
+            backup_root = root / "backups"
+            module = __import__("codex_routing.managed_files", fromlist=["_write_fd"])
+            real_write = module._write_fd
+            replacement: Path | None = None
+
+            def replace_pending_manifest(fd: int, payload: bytes) -> None:
+                nonlocal replacement
+                real_write(fd, payload)
+                candidates = list(backup_root.rglob("manifest.pending.json"))
+                if candidates and replacement is None:
+                    replacement = candidates[0]
+                    replacement.unlink()
+                    replacement.write_bytes(b"foreign-manifest\n")
+
+            with mock.patch(
+                "codex_routing.managed_files._write_fd",
+                side_effect=replace_pending_manifest,
+            ):
+                with self.assertRaisesRegex(RoutingConfigError, "changed during write"):
+                    apply_transaction(
+                        (FileUpdate(destination, b"installed\n"),), backup_root
+                    )
+
+            self.assertFalse(destination.exists())
+            self.assertIsNotNone(replacement)
+            assert replacement is not None
+            self.assertEqual(replacement.read_bytes(), b"foreign-manifest\n")
+
+    def test_symlink_destination_is_refused_without_touching_its_target(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            target = root / "target.toml"
+            target.write_bytes(b"target\n")
+            destination = root / "config.toml"
+            destination.symlink_to(target)
+
+            with self.assertRaisesRegex(RoutingConfigError, "symlink|reparse"):
+                apply_transaction(
+                    (FileUpdate(destination, b"installed\n"),), root / "backups"
+                )
+
+            self.assertEqual(target.read_bytes(), b"target\n")
+
+    def test_reparse_destination_is_refused(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            destination = root / "config.toml"
+            destination.write_bytes(b"before\n")
+            real_lstat = Path.lstat
+            original = real_lstat(destination)
+            flagged = SimpleNamespace(
+                st_mode=original.st_mode,
+                st_file_attributes=getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400),
+            )
+
+            def lstat_with_reparse(path: Path):
+                return flagged if path == destination else real_lstat(path)
+
+            with mock.patch(
+                "codex_routing.managed_files._lstat", side_effect=lstat_with_reparse
+            ):
+                with self.assertRaisesRegex(RoutingConfigError, "symlink|reparse"):
+                    apply_transaction(
+                        (FileUpdate(destination, b"installed\n"),), root / "backups"
+                    )
+
+            self.assertEqual(destination.read_bytes(), b"before\n")
+
+    def test_directory_destination_is_refused(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            destination = root / "config.toml"
+            destination.mkdir()
+
+            with self.assertRaisesRegex(RoutingConfigError, "regular file"):
+                apply_transaction(
+                    (FileUpdate(destination, b"installed\n"),), root / "backups"
+                )
+
+    def test_manifest_json_is_exact_and_deterministically_ordered(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            existing = root / "z-existing.toml"
+            created = root / "a-created.md"
+            existing.write_bytes(b"before\n")
+
+            with (
+                mock.patch(
+                    "codex_routing.managed_files._utc_timestamp",
+                    return_value="2026-08-18T01:02:03Z",
+                ),
+                mock.patch(
+                    "codex_routing.managed_files._platform_name",
+                    return_value="test-platform",
+                ),
+            ):
+                result = apply_transaction(
+                    (
+                        FileUpdate(existing, b"after\n"),
+                        FileUpdate(created, b"created\n"),
+                    ),
+                    root / "backups",
+                )
+
+            expected = {
+                "created_at": "2026-08-18T01:02:03Z",
+                "files": [
+                    {
+                        "backup_path": None,
+                        "installed_sha256": hashlib.sha256(b"created\n").hexdigest(),
+                        "path": str(created),
+                        "prior_exists": False,
+                        "prior_sha256": None,
+                    },
+                    {
+                        "backup_path": "files/0001.bak",
+                        "installed_sha256": hashlib.sha256(b"after\n").hexdigest(),
+                        "path": str(existing),
+                        "prior_exists": True,
+                        "prior_sha256": hashlib.sha256(b"before\n").hexdigest(),
+                    },
+                ],
+                "platform": "test-platform",
+                "schema": 1,
+            }
+            expected_bytes = (
+                json.dumps(expected, indent=2, sort_keys=True, separators=(",", ": "))
+                + "\n"
+            ).encode("utf-8")
+            self.assertEqual(result.manifest_path.read_bytes(), expected_bytes)
+            self.assertEqual(result.changed_paths, (created, existing))
+
+    def test_write_failure_preserves_unverified_owned_stage(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            destination = root / "config.toml"
+            module = __import__("codex_routing.managed_files", fromlist=["_write_fd"])
+            real_write = module._write_fd
+            calls = 0
+
+            def fail_stage_write(fd: int, payload: bytes) -> None:
+                nonlocal calls
+                calls += 1
+                if calls == 2:
+                    raise OSError("injected write failure")
+                real_write(fd, payload)
+
+            with mock.patch(
+                "codex_routing.managed_files._write_fd", side_effect=fail_stage_write
+            ):
+                with self.assertRaisesRegex(
+                    RoutingConfigError,
+                    "owned temporary path content changed",
+                ):
+                    apply_transaction(
+                        (FileUpdate(destination, b"installed\n"),), root / "backups"
+                    )
+
+            self.assertFalse(destination.exists())
+            stages = list(root.rglob("*.tmp"))
+            self.assertEqual(len(stages), 1)
+            self.assertEqual(stages[0].read_bytes(), b"")
+
+    def test_fsync_failure_keeps_destination_unchanged(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            destination = root / "config.toml"
+            destination.write_bytes(b"before\n")
+
+            with mock.patch(
+                "codex_routing.managed_files.os.fsync",
+                side_effect=OSError("injected fsync failure"),
+            ):
+                with self.assertRaisesRegex(RoutingConfigError, "fsync failure"):
+                    apply_transaction(
+                        (FileUpdate(destination, b"installed\n"),), root / "backups"
+                    )
+
+            self.assertEqual(destination.read_bytes(), b"before\n")
+            self.assert_no_temporary_files(root)
+
+    def test_directory_fsync_propagates_permission_errors_on_posix(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            module = __import__(
+                "codex_routing.managed_files", fromlist=["_fsync_directory"]
+            )
+            with mock.patch(
+                "codex_routing.managed_files.os.open",
+                side_effect=PermissionError(errno.EACCES, "permission denied"),
+            ):
+                with self.assertRaises(PermissionError):
+                    module._fsync_directory(Path(raw))
+
+    def test_directory_fsync_ignores_only_unsupported_posix_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            module = __import__(
+                "codex_routing.managed_files", fromlist=["_fsync_directory"]
+            )
+            with mock.patch(
+                "codex_routing.managed_files.os.fsync",
+                side_effect=OSError(errno.EINVAL, "directory fsync unsupported"),
+            ):
+                module._fsync_directory(Path(raw))
+
+    def test_publication_order_is_sorted_by_destination_path(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            first = root / "a.md"
+            second = root / "z.toml"
+            published: list[Path] = []
+
+            def record_replace(source: Path, destination: Path) -> None:
+                if destination in (first, second):
+                    published.append(destination)
+                source.replace(destination)
+
+            apply_transaction(
+                (
+                    FileUpdate(second, b"second\n"),
+                    FileUpdate(first, b"first\n"),
+                ),
+                root / "backups",
+                replace=record_replace,
+            )
+
+            self.assertEqual(published, [first, second])
+
+    def test_replace_callback_that_does_not_publish_is_refused_and_cleaned(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            destination = root / "config.toml"
+            destination.write_bytes(b"before\n")
+
+            def no_op_replace(source: Path, target: Path) -> None:
+                del source, target
+
+            with self.assertRaisesRegex(RoutingConfigError, "did not install"):
+                apply_transaction(
+                    (FileUpdate(destination, b"installed\n"),),
+                    root / "backups",
+                    replace=no_op_replace,
+                )
+
+            self.assertEqual(destination.read_bytes(), b"before\n")
+            self.assert_no_temporary_files(root)
+
+    def test_idempotent_apply_publishes_no_destination(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            destination = root / "config.toml"
+            destination.write_bytes(b"same\n")
+            destination_replaces: list[Path] = []
+
+            def record_replace(source: Path, target: Path) -> None:
+                if target == destination:
+                    destination_replaces.append(target)
+                source.replace(target)
+
+            result = apply_transaction(
+                (FileUpdate(destination, b"same\n"),),
+                root / "backups",
+                replace=record_replace,
+            )
+
+            self.assertEqual(result.changed_paths, ())
+            self.assertEqual(destination_replaces, [])
+            self.assertEqual(destination.read_bytes(), b"same\n")
+            self.assertEqual(json.loads(result.manifest_path.read_text())["files"], [])
+
+    def test_no_op_destination_race_is_revalidated_before_publication(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            unchanged = root / "a.toml"
+            changed = root / "b.md"
+            unchanged.write_bytes(b"same\n")
+            changed.write_bytes(b"before\n")
+            module = __import__(
+                "codex_routing.managed_files", fromlist=["_prepare_stage"]
+            )
+            real_prepare = module._prepare_stage
+            raced = False
+
+            def race_no_op(path: Path, payload: bytes, purpose: str):
+                nonlocal raced
+                stage = real_prepare(path, payload, purpose)
+                if purpose == "install" and not raced:
+                    raced = True
+                    unchanged.write_bytes(b"foreign-no-op\n")
+                return stage
+
+            with mock.patch(
+                "codex_routing.managed_files._prepare_stage",
+                side_effect=race_no_op,
+            ):
+                with self.assertRaisesRegex(RoutingConfigError, "changed during transaction"):
+                    apply_transaction(
+                        (
+                            FileUpdate(unchanged, b"same\n"),
+                            FileUpdate(changed, b"installed\n"),
+                        ),
+                        root / "backups",
+                    )
+
+            self.assertEqual(unchanged.read_bytes(), b"foreign-no-op\n")
+            self.assertEqual(changed.read_bytes(), b"before\n")
+            self.assert_no_temporary_files(root)
+
+    def test_destination_identity_change_before_publish_is_refused(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            destination = root / "config.toml"
+            destination.write_bytes(b"before\n")
+            module = __import__(
+                "codex_routing.managed_files", fromlist=["_prepare_stage"]
+            )
+            real_prepare = module._prepare_stage
+            replaced = False
+
+            def replace_destination_after_staging(path: Path, payload: bytes, purpose: str):
+                nonlocal replaced
+                prepared = real_prepare(path, payload, purpose)
+                if purpose == "install" and not replaced:
+                    replaced = True
+                    path.unlink()
+                    path.write_bytes(b"foreign\n")
+                return prepared
+
+            with mock.patch(
+                "codex_routing.managed_files._prepare_stage",
+                side_effect=replace_destination_after_staging,
+            ):
+                with self.assertRaisesRegex(RoutingConfigError, "changed during transaction"):
+                    apply_transaction(
+                        (FileUpdate(destination, b"installed\n"),), root / "backups"
+                    )
+
+            self.assertEqual(destination.read_bytes(), b"foreign\n")
+            self.assert_no_temporary_files(root)
+
+    def test_parent_change_before_publish_is_refused(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            parent = root / "owned"
+            parent.mkdir(mode=0o755)
+            destination = parent / "config.toml"
+            destination.write_bytes(b"before\n")
+            module = __import__(
+                "codex_routing.managed_files", fromlist=["_prepare_stage"]
+            )
+            real_prepare = module._prepare_stage
+            changed = False
+
+            def chmod_parent_after_staging(path: Path, payload: bytes, purpose: str):
+                nonlocal changed
+                prepared = real_prepare(path, payload, purpose)
+                if purpose == "install" and not changed:
+                    changed = True
+                    parent.chmod(0o700)
+                return prepared
+
+            with mock.patch(
+                "codex_routing.managed_files._prepare_stage",
+                side_effect=chmod_parent_after_staging,
+            ):
+                with self.assertRaisesRegex(RoutingConfigError, "parent changed"):
+                    apply_transaction(
+                        (FileUpdate(destination, b"installed\n"),), root / "backups"
+                    )
+
+            self.assertEqual(destination.read_bytes(), b"before\n")
+            self.assert_no_temporary_files(root)
+
+    def test_rollback_removes_only_an_unchanged_newly_created_file(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            destination = root / "new.md"
+            result = apply_transaction(
+                (FileUpdate(destination, b"installed\n"),), root / "backups"
+            )
+
+            rolled_back = rollback_transaction(result.manifest_path)
+
+            self.assertEqual(rolled_back, (destination,))
+            self.assertFalse(destination.exists())
+            self.assert_no_temporary_files(root)
+
+    def test_rollback_restores_exact_prior_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            destination = root / "config.toml"
+            destination.write_bytes(b"prior\x00bytes\r\n")
+            result = apply_transaction(
+                (FileUpdate(destination, b"installed\n"),), root / "backups"
+            )
+
+            rolled_back = rollback_transaction(result.manifest_path)
+
+            self.assertEqual(rolled_back, (destination,))
+            self.assertEqual(destination.read_bytes(), b"prior\x00bytes\r\n")
+            self.assert_no_temporary_files(root)
+
+    def test_rollback_preserves_digest_changed_foreign_replacement(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            destination = root / "new.md"
+            result = apply_transaction(
+                (FileUpdate(destination, b"installed\n"),), root / "backups"
+            )
+            destination.write_bytes(b"foreign-replacement\n")
+
+            with self.assertRaisesRegex(RoutingConfigError, "digest mismatch"):
+                rollback_transaction(result.manifest_path)
+
+            self.assertEqual(destination.read_bytes(), b"foreign-replacement\n")
+
+    def test_rollback_publish_failure_reinstalls_already_restored_file(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            first = root / "a.toml"
+            second = root / "b.md"
+            first.write_bytes(b"before-a\n")
+            second.write_bytes(b"before-b\n")
+            result = apply_transaction(
+                (
+                    FileUpdate(first, b"installed-a\n"),
+                    FileUpdate(second, b"installed-b\n"),
+                ),
+                root / "backups",
+            )
+
+            def fail_second_restore(source: Path, destination: Path) -> None:
+                if destination == second and "rollback" in source.name:
+                    raise OSError("injected rollback publish failure")
+                source.replace(destination)
+
+            with self.assertRaisesRegex(RoutingConfigError, "rollback publish failure"):
+                rollback_transaction(
+                    result.manifest_path, replace=fail_second_restore
+                )
+
+            self.assertEqual(first.read_bytes(), b"installed-a\n")
+            self.assertEqual(second.read_bytes(), b"installed-b\n")
+            self.assert_no_temporary_files(root)
+
+    def test_rollback_publish_then_raise_compensates_current_record(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            destination = root / "config.toml"
+            destination.write_bytes(b"before\n")
+            result = apply_transaction(
+                (FileUpdate(destination, b"installed\n"),), root / "backups"
+            )
+
+            def publish_then_raise(source: Path, target: Path) -> None:
+                source.replace(target)
+                if "rollback" in source.name:
+                    raise OSError("injected post-publish rollback failure")
+
+            with self.assertRaisesRegex(
+                RoutingConfigError, "post-publish rollback failure"
+            ):
+                rollback_transaction(
+                    result.manifest_path, replace=publish_then_raise
+                )
+
+            self.assertEqual(destination.read_bytes(), b"installed\n")
+            self.assert_no_temporary_files(root)
+
+    def test_rollback_publish_and_cleanup_failures_are_aggregated(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            destination = root / "config.toml"
+            destination.write_bytes(b"before\n")
+            result = apply_transaction(
+                (FileUpdate(destination, b"installed\n"),), root / "backups"
+            )
+
+            def fail_restore(source: Path, target: Path) -> None:
+                del source, target
+                raise OSError("injected rollback publish failure")
+
+            with mock.patch(
+                "codex_routing.managed_files._remove_owned_stage",
+                side_effect=OSError("injected rollback cleanup failure"),
+            ):
+                with self.assertRaises(RoutingConfigError) as caught:
+                    rollback_transaction(
+                        result.manifest_path, replace=fail_restore
+                    )
+
+            message = str(caught.exception)
+            self.assertIn("rollback publish failure", message)
+            self.assertIn("rollback cleanup failure", message)
+            self.assertEqual(destination.read_bytes(), b"installed\n")
+
+    def test_publish_rollback_and_cleanup_failures_are_aggregated(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            first = root / "a.toml"
+            second = root / "b.md"
+            first.write_bytes(b"before-a\n")
+            second.write_bytes(b"before-b\n")
+
+            def fail_publish_and_rollback(source: Path, destination: Path) -> None:
+                if destination == second and "rollback" not in source.name:
+                    raise OSError("injected publish failure")
+                if destination == first and "rollback" in source.name:
+                    raise OSError("injected rollback failure")
+                source.replace(destination)
+
+            with mock.patch(
+                "codex_routing.managed_files._remove_owned_stage",
+                side_effect=OSError("injected cleanup failure"),
+            ):
+                with self.assertRaises(RoutingConfigError) as caught:
+                    apply_transaction(
+                        (
+                            FileUpdate(first, b"after-a\n"),
+                            FileUpdate(second, b"after-b\n"),
+                        ),
+                        root / "backups",
+                        replace=fail_publish_and_rollback,
+                    )
+
+            message = str(caught.exception)
+            self.assertIn("publish failure", message)
+            self.assertIn("rollback failure", message)
+            self.assertIn("cleanup failure", message)
+
+    def test_merge_managed_block_inserts_replaces_and_removes_owned_text(self) -> None:
+        inserted = merge_managed_block(b"heading\n", b"owned\n", BEGIN, END)
+        self.assertEqual(
+            inserted,
+            b"heading\n\n" + BEGIN + b"\nowned\n" + END + b"\n",
+        )
+
+        replaced = merge_managed_block(inserted, b"replacement\n", BEGIN, END)
+        self.assertEqual(
+            replaced,
+            b"heading\n\n" + BEGIN + b"\nreplacement\n" + END + b"\n",
+        )
+
+        removed = merge_managed_block(replaced + b"\nafter\n", b"", BEGIN, END)
+        self.assertEqual(removed, b"heading\n\nafter\n")
+
+    def test_merge_managed_block_preserves_crlf_and_rejects_ambiguous_markers(self) -> None:
+        merged = merge_managed_block(b"heading\r\n", b"owned\r\n", BEGIN, END)
+        self.assertNotIn(b"\n", merged.replace(b"\r\n", b""))
+
+        with self.assertRaisesRegex(RoutingConfigError, "contains a marker"):
+            merge_managed_block(b"", BEGIN, BEGIN, END)
+        with self.assertRaisesRegex(RoutingConfigError, "incomplete or duplicated"):
+            merge_managed_block(BEGIN + b"\n", b"owned", BEGIN, END)
+        with self.assertRaisesRegex(RoutingConfigError, "incomplete or duplicated"):
+            merge_managed_block(END + b"\n" + BEGIN, b"owned", BEGIN, END)
+
+
+if __name__ == "__main__":
+    unittest.main()

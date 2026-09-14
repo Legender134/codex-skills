@@ -1,0 +1,4 @@
+interface:
+  display_name: "Shared GPU Host"
+  short_description: "Inspect shared GPU ownership and job boundaries"
+  default_prompt: "Use $using-shared-gpu-host to inspect this GPU job and its resource allocation."

@@ -22,7 +22,7 @@ Read [references/repository-contract.md](references/repository-contract.md) when
 - Reuse repository mechanisms, boundaries, naming, and test style.
 - Explore prototypes, alternatives, diagnostics, tests, notes, and temporary artifacts when useful. Authorized local WIP commits may contain exploration; they are not approval to publish it.
 - Keep exploratory work identifiable and reversible. The worktree is not automatically the submission candidate.
-- Recheck instructions and pause for direction when crossing a repository, safety, or authorization boundary; changing a public interface; adding a heavyweight dependency; or materially overlapping user-owned work. More local files or a large intermediate diff alone are not reasons to stop exploring.
+- Recheck instructions when crossing a repository, safety, dependency, public-interface, or user-work boundary. Continue within existing authorization; ask for direction only when necessary information or authorization is missing, or a new material risk changes the approved scope. More local files or a large intermediate diff alone are not reasons to stop exploring.
 - Run repository-native checks in proportion to risk and treat metrics as anomaly signals, never quotas.
 
 ## At delivery

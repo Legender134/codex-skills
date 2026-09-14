@@ -217,6 +217,33 @@ class DiscoveryTests(FilesystemCase):
         )
 
 
+class OrphanedLinkTests(FilesystemCase):
+    def test_preview_reports_source_missing_link_without_changing_it(self):
+        destination = self.codex_destination / "retired-gpu-skill"
+        target = self.codex_source / "retired-gpu-skill"
+        destination.symlink_to(target, target_is_directory=True)
+
+        candidates, issues = sync_skills.discover_candidates(self.scopes)
+
+        self.assertEqual(candidates, {})
+        self.assertEqual(len(issues), 1)
+        self.assertIn("BROKEN_LINK codex/retired-gpu-skill", issues[0])
+        self.assertTrue(destination.is_symlink())
+        self.assertEqual(destination.readlink(), target)
+        self.assertFalse(target.exists())
+
+    def test_healthy_destination_only_skill_is_preserved(self):
+        outside = self.base / "native-skills"
+        outside.mkdir()
+        source = make_skill(outside, "native-gpu")
+        destination = self.codex_destination / "native-gpu"
+        destination.symlink_to(source, target_is_directory=True)
+        candidates, issues = sync_skills.discover_candidates(self.scopes)
+        self.assertEqual(candidates, {})
+        self.assertEqual(issues, [])
+        self.assertEqual(destination.readlink(), source)
+
+
 class PlanningTests(FilesystemCase):
     def action_for(self, name: str):
         source = make_skill(self.codex_source, name)

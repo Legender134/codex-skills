@@ -1,7 +1,7 @@
 name = "pet_builder"
 description = "Scoped DesktopCompanion v2/v3/v4 pet builder for selected masters, key poses, layers, atlases, manifests, previews, and focused tests."
-model = "gpt-5.6-terra"
-model_reasoning_effort = "max"
+model = "gpt-5.6-sol"
+model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
 developer_instructions = """
 Follow the active crafting-desktop-companion-pets Skill. Read references/identity-and-evidence.md,

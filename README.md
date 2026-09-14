@@ -1,12 +1,32 @@
 # Codex Skills
 
-Portable, user-authored Skills for Codex.
+Portable Codex skills and independently maintained Windows/WSL routing configuration.
 
 ## Included Skills
 
 - `codex-sync-skills`: safely previews and creates approved symbolic links from Windows Skill installations into WSL. It protects conflicts and never copies or overwrites existing Skill destinations.
 - `repository-aligned-development`: keeps repository work aligned with local instructions, established patterns, user-owned changes, minimal diffs, verification evidence, and explicit authorization gates.
 - `crafting-desktop-companion-pets`: researches, recommends, builds, repairs, reviews, validates, and packages DesktopCompanion pets across the supported v2, v3, and v4 formats.
+- `hatch-pet`: builds and validates Codex v2 animated pets; uses the separate Apache-2.0 license in its directory.
+- `using-shared-gpu-host`: identifies ownership, allocation, and authorization boundaries for shared GPU work.
+- `planned-development`: an explicit-only design, implementation planning, and review workflow; invoke it by name when useful.
+
+## Windows / WSL routing configuration
+
+[Setup guide](templates/codex-routing/SETUP.md) · [Installer and validation](templates/codex-routing/README.md)
+
+The configuration uses Astra Low for the primary, Sol Medium for implementation,
+Luna High for evidence discovery, and Terra Medium for bounded analysis and
+routine edits. Independent review uses Astra Low or Astra High when risk warrants
+it. Global child concurrency is 1; the optional EGS project overlays use 2.
+
+The package includes separate Windows and WSL instructions, six role templates,
+an installer with preview/backup/rollback, project validation, and the 14-name
+Superpowers disable policy. Global config homes remain independent. Project
+overrides and worktrees are checked separately; installation never grants trust.
+
+Only portable source is published. Account files, internal Confluence bundles,
+desktop runtime paths, local backups, and generated evidence stay on the host.
 
 ## Install with Codex
 
@@ -54,4 +74,4 @@ python3 skills/codex-sync-skills/scripts/test_sync_skills.py
 
 ## License
 
-MIT
+MIT, except `skills/hatch-pet`, which retains its [Apache-2.0 license](skills/hatch-pet/LICENSE.txt) and [adaptation notice](skills/hatch-pet/NOTICE.md).

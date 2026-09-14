@@ -1,0 +1,10 @@
+#!/bin/sh
+# Use the invoking user's maintained Linux installation, including for wsl --.
+codex_linux="$HOME/.local/bin/codex"
+if [ ! -x "$codex_linux" ]; then
+  echo "Codex Linux is not installed at $codex_linux" >&2
+  exit 127
+fi
+PATH="$HOME/.local/bin:$PATH"
+export PATH
+exec "$codex_linux" "$@"

@@ -122,6 +122,16 @@ def discover_candidates(
 
             candidates[selector] = (child, scope.destination / child.name)
 
+        # Destination-only broken links otherwise disappear from source discovery.
+        for destination in sorted(scope.destination.iterdir(), key=lambda item: item.name):
+            if destination.name == ".system" or not destination.is_symlink():
+                continue
+            if not (destination / "SKILL.md").is_file():
+                issues.append(
+                    f"BROKEN_LINK {scope.name}/{destination.name}: "
+                    f"destination has no readable SKILL.md: {destination}"
+                )
+
     return candidates, issues
 
 

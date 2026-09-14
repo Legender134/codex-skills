@@ -56,4 +56,4 @@ Expected size, file counts, or test ratios may identify anomalies; they are neve
 
 ## Recheck triggers
 
-Re-read relevant evidence and update the contract before crossing a repository boundary, changing an ordinary dependency, entering another governed subsystem, or using an unfamiliar pattern. Before introducing a heavyweight dependency or public interface, pause, present the evidence and tradeoffs, and request user direction. A larger intermediate diff or additional exploratory file alone does not require escalation.
+Re-read relevant evidence and update the contract before crossing a repository boundary, changing an ordinary dependency, entering another governed subsystem, or using an unfamiliar pattern. Before introducing a heavyweight dependency or changing a public interface, review the evidence and tradeoffs. Continue when that change is already authorized; request direction only for missing necessary information, a new material risk, or scope beyond existing authorization. A larger intermediate diff or additional exploratory file alone does not require escalation.

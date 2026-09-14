@@ -1,0 +1,6 @@
+interface:
+  display_name: "Planned Development"
+  short_description: "Explicit design, scoped execution, and review"
+  default_prompt: "Use $planned-development to design and implement this change with appropriate verification."
+policy:
+  allow_implicit_invocation: false

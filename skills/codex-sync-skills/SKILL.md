@@ -29,6 +29,8 @@ Show the complete output. Preview mode must not mutate the filesystem. Interpret
 
 Add `--json` when another tool must consume the result. It emits `actions` with selector, source, destination, status, and detail fields, plus an `issues` list.
 
+`BROKEN_LINK` issues also report existing destination links whose target has no readable `SKILL.md`, even when the Windows source is absent. Preview never repairs or unlinks them.
+
 Exit codes are stable: `0` means a safe result, `1` means a usage/environment error, and `2` means at least one conflict or rejected candidate.
 
 ## Review portability
@@ -44,7 +46,7 @@ A symbolic link makes instructions discoverable; it does not make Windows execut
 
 ## Request approval
 
-Present each portable selector, source, and destination. Wait for explicit authorization before `--apply`. A preview or general sync request never authorizes overwriting conflicts.
+Present the portable selectors, sources, and destinations in the preview. Reuse existing user authorization that covers those targets; ask only when the scope is still ambiguous or a new action exceeds it. A preview or general sync request never authorizes overwriting conflicts.
 
 ## Apply approved links
 

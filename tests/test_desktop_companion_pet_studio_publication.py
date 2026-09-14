@@ -116,11 +116,11 @@ def test_pet_skill_is_complete_and_locally_linked() -> None:
 def test_project_profile_routes_models_without_machine_trust() -> None:
     config_path = TEMPLATE / ".codex" / "config.toml"
     config = tomllib.loads(config_path.read_text(encoding="utf-8"))
-    assert config["model"] == "gpt-5.6-sol"
-    assert config["model_reasoning_effort"] == "xhigh"
+    assert "model" not in config
+    assert "model_reasoning_effort" not in config
     assert config["agents"]["max_concurrent_threads_per_session"] == 1
-    assert config["agents"]["default_subagent_model"] == "gpt-5.6-terra"
-    assert config["agents"]["default_subagent_reasoning_effort"] == "max"
+    assert "default_subagent_model" not in config["agents"]
+    assert "default_subagent_reasoning_effort" not in config["agents"]
     assert "projects" not in config
 
 
@@ -130,9 +130,9 @@ def test_project_profile_publishes_version_neutral_pet_agents() -> None:
     assert not (TEMPLATE / ".agents").exists()
 
     expected = {
-        "pet-researcher.toml": ("pet_researcher", "gpt-5.6-luna", "max", "read-only"),
-        "pet-builder.toml": ("pet_builder", "gpt-5.6-terra", "max", "workspace-write"),
-        "pet-reviewer.toml": ("pet_reviewer", "gpt-5.6-sol", "xhigh", "read-only"),
+        "pet-researcher.toml": ("pet_researcher", "gpt-5.6-luna", "high", "read-only"),
+        "pet-builder.toml": ("pet_builder", "gpt-5.6-sol", "medium", "workspace-write"),
+        "pet-reviewer.toml": ("pet_reviewer", "gpt-6-astra", "low", "read-only"),
     }
     required_references = {
         "pet-researcher.toml": {
