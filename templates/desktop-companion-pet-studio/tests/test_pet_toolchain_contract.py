@@ -158,14 +158,12 @@ def test_project_codex_config_has_exact_pet_routing() -> None:
     config = load_project_config()
 
     assert config == {
-        "model": "gpt-5.6-sol",
-        "model_reasoning_effort": "xhigh",
+        "model": "gpt-6-astra",
+        "model_reasoning_effort": "low",
         "features": {"multi_agent": True},
         "agents": {
             "enabled": True,
             "max_concurrent_threads_per_session": 1,
-            "default_subagent_model": "gpt-5.6-terra",
-            "default_subagent_reasoning_effort": "max",
             "interrupt_message": True,
         },
     }

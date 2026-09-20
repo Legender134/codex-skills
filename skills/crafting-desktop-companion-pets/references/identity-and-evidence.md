@@ -7,7 +7,7 @@ select or repair a canonical identity.
 
 ## Choose the route
 
-- **Source-faithful:** current official target evidence governs identity.
+- **Source-faithful:** official target evidence for the selected era/form governs identity.
   Historical material from the same character can supply compatible motion
   grammar, but cannot restore an older face, costume, palette, ability, or
   power level.
@@ -86,7 +86,16 @@ and `APPROVED_CREATIVE_BRIEF_REQUIRED` blockers.
 
 ## Resolve conflict and uncertainty
 
-Current official identity outranks historical identity. Keep high-salience
+For a user-selected era/form, official evidence for that era/form governs; do not
+replace it with the newest costume or power level. Separate observed identity and
+costume facts, explicitly approved stylization (such as three-head proportions),
+and unresolved details. Do not demand an official chibi model to prove an approved
+chibi adaptation. Do not promote speculative marks, lining colors or ornaments to
+required canon. High-salience missing evidence still blocks canonical selection;
+minor details may be simplified only within the approved design and with that
+choice recorded, never represented as observed official facts.
+
+Within the selected era/form, current official identity outranks superseded identity. Keep high-salience
 selection provisional when the target’s silhouette, face/age/mark, dominant
 costume blocks, or signature hair/ornaments lack direct or corroborated
 evidence. Record the uncertainty by name and stop at the earliest affected

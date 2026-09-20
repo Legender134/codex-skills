@@ -19,6 +19,7 @@ EXPECTED_SKILL_FILES = {
     "references/format-v3.md",
     "references/format-v4.md",
     "references/generation-job-graph.md",
+    "references/execution-and-models.md",
     "references/identity-and-evidence.md",
     "references/nangong-wan-calibration-case.md",
     "references/repair-and-convergence.md",
@@ -44,6 +45,7 @@ EXPECTED_SKILL_FILES = {
     "templates/identity-contract.json",
     "templates/job-manifest.json",
     "templates/project-brief.md",
+    "templates/production-state.json",
     "templates/run-summary.json",
     "templates/visual-verdict.json",
     "tests/behavior/__init__.py",
@@ -116,8 +118,10 @@ def test_pet_skill_is_complete_and_locally_linked() -> None:
 def test_project_profile_routes_models_without_machine_trust() -> None:
     config_path = TEMPLATE / ".codex" / "config.toml"
     config = tomllib.loads(config_path.read_text(encoding="utf-8"))
-    assert "model" not in config
-    assert "model_reasoning_effort" not in config
+    assert config["model"] == "gpt-6-astra"
+    assert config["model_reasoning_effort"] == "low"
+    assert "model_provider" not in config
+    assert "approval_policy" not in config
     assert config["agents"]["max_concurrent_threads_per_session"] == 1
     assert "default_subagent_model" not in config["agents"]
     assert "default_subagent_reasoning_effort" not in config["agents"]
@@ -241,7 +245,7 @@ def test_toolchain_overlay_is_complete_and_source_only() -> None:
     assert set(lock["models"]) == {"isnet-anime", "u2net_human_seg"}
     assert set(lock["tools"]) == {"ffmpeg", "imagemagick", "libwebp", "rife"}
 
-    for relative_path in EXPECTED_TOOLCHAIN_FILES:
+    for relative_path in files:
         text = (TEMPLATE / relative_path).read_bytes().decode("utf-8", errors="strict")
         folded = text.casefold()
         assert "\ufffd" not in text, relative_path

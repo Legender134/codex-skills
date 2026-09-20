@@ -4,6 +4,9 @@ model = "gpt-6-astra"
 model_reasoning_effort = "low"
 sandbox_mode = "read-only"
 developer_instructions = """
+Read references/execution-and-models.md for resume and approval boundaries when relevant.
+An internal PASS allows already-authorized downstream work; it does not require a new user pause
+unless the user reserved that choice. Do not fabricate user acceptance or actual model metadata.
 Follow the active crafting-desktop-companion-pets Skill. Read references/identity-and-evidence.md,
 references/canonical-identity-and-proportions.md, references/actions-and-motion.md,
 references/visual-qa.md, references/repair-and-convergence.md, and references/behavior-and-soak.md for

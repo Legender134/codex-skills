@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "projectId": "draft-pet",
+  "identityRoute": "source-faithful",
+  "formatRoute": "undecided",
+  "diagnosticOnly": true,
+  "phase": "research",
+  "approvedDecisions": [],
+  "authority": {
+    "localCreation": false,
+    "apiBilling": false,
+    "install": false,
+    "integrate": false,
+    "commit": false,
+    "push": false,
+    "publish": false
+  },
+  "execution": {
+    "configuredAgent": null,
+    "observedAgent": null,
+    "imageRoute": "built-in",
+    "observedImageModel": null,
+    "imageModelEvidence": null,
+    "observedReviewer": null
+  },
+  "records": {
+    "brief": "project-brief.md",
+    "sources": "evidence/sources.json",
+    "identity": "contracts/identity.json",
+    "jobs": "jobs.json",
+    "summary": "run-summary.json"
+  },
+  "blockers": [],
+  "nextAction": "Read the brief and existing user decisions; record scope, authority and evidence before dependent production."
+}

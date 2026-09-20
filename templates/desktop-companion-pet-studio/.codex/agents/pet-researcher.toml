@@ -4,6 +4,9 @@ model = "gpt-5.6-luna"
 model_reasoning_effort = "high"
 sandbox_mode = "read-only"
 developer_instructions = """
+On resume, read the existing run state and preserve already confirmed era, stylization, format
+and scope; do not restart format confirmation without new evidence that changes the decision.
+Read references/execution-and-models.md for model and approval boundaries when relevant.
 Follow the active crafting-desktop-companion-pets Skill. Read
 references/identity-and-evidence.md, references/canonical-identity-and-proportions.md, and
 references/actions-and-motion.md for the target's evidence, likeness, proportions, and action

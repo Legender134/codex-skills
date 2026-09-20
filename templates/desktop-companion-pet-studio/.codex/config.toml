@@ -1,4 +1,7 @@
-# Inherit global model routing; keep this project child limit.
+# Project defaults; task/UI overrides may take precedence. Preserve host authentication.
+model = "gpt-6-astra"
+model_reasoning_effort = "low"
+
 [features]
 multi_agent = true
 

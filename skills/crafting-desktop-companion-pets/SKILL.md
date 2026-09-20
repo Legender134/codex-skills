@@ -19,6 +19,7 @@ are already selected.
 
 ## Read only the applicable references
 
+- Model capability, approvals, or resuming production: [execution-and-models.md](references/execution-and-models.md).
 - Identity or evidence: [identity-and-evidence.md](references/identity-and-evidence.md).
 - Morphology, proportion, or likeness: [canonical-identity-and-proportions.md](references/canonical-identity-and-proportions.md).
 - Actions, motion, props, or effects: [actions-and-motion.md](references/actions-and-motion.md).
@@ -51,6 +52,11 @@ are already selected.
    push, publication, account use, or global configuration.
 
 ## Retained result
+
+Existing approval persists for its stated scope. Internal gate passage permits
+the next already-authorized production step; it does not require another user
+confirmation unless the user reserved that decision. Record final user acceptance
+separately. A blocked dependency does not block unrelated safe preparation.
 
 Keep the project brief/evidence, identity and action contracts, canonical
 hash, jobs, generated and deterministic artifacts, actual-size sheets,

@@ -50,6 +50,12 @@ pet:
    reserved to the user. Never ask the user to discover, confirm, or prioritize
    a defect already visible internally.
 
+Internal PASS also permits already-authorized downstream production. Do not add
+a mandatory user pause at every gate unless the user explicitly reserved that
+choice. Acceptance of a specific image and authorization to produce candidates
+are different records. Use an available read-only reviewer with exact artifact
+hashes and comparison inputs; do not repeatedly ask whether to arrange review.
+
 An unavailable independent reviewer is a recorded blocker, not permission to
 use the user as fallback QA. User availability, deadline, sunk cost, technical
 green checks, or completed downstream work cannot bypass this order. Internal

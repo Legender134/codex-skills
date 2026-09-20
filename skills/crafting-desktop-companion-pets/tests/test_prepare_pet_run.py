@@ -62,6 +62,26 @@ class PreparePetRunTest(unittest.TestCase):
             with self.assertRaises(FileExistsError):
                 prepare_pet_run(root, "safe-id", "source-faithful", "undecided")
 
+    def test_resume_index_is_portable_and_does_not_grant_authority(self) -> None:
+        for route in ("undecided", "v2", "v3", "v4"):
+            with self.subTest(route=route), tempfile.TemporaryDirectory() as raw:
+                run = prepare_pet_run(Path(raw), "cloud-cat", "original-brand", route)
+                state = json.loads((run / "production-state.json").read_text(encoding="utf-8"))
+                self.assertEqual(state["projectId"], "cloud-cat")
+                self.assertEqual(state["identityRoute"], "original-brand")
+                self.assertEqual(state["formatRoute"], route)
+                self.assertIs(state["diagnosticOnly"], True)
+                self.assertEqual(state["approvedDecisions"], [])
+                self.assertTrue(all(value is False for value in state["authority"].values()))
+                self.assertIsNone(state["execution"]["observedImageModel"])
+                self.assertIsNone(state["execution"]["observedAgent"])
+                self.assertIsNone(state["execution"]["observedReviewer"])
+                self.assertEqual(state["execution"]["imageRoute"], "built-in")
+                for relative in state["records"].values():
+                    self.assertFalse(Path(relative).is_absolute())
+                    self.assertTrue((run / relative).is_file())
+                self.assertTrue(state["nextAction"])
+
 
 if __name__ == "__main__":
     unittest.main()

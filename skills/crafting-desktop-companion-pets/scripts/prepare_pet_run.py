@@ -62,6 +62,7 @@ def prepare_pet_run(
             "job-manifest.json",
             "visual-verdict.json",
             "run-summary.json",
+            "production-state.json",
         )
     }
     markdown_templates = {
@@ -95,6 +96,7 @@ def prepare_pet_run(
         ("job-manifest.json", run_dir / "jobs.json"),
         ("visual-verdict.json", run_dir / "qa" / "visual-verdict.json"),
         ("run-summary.json", run_dir / "run-summary.json"),
+        ("production-state.json", run_dir / "production-state.json"),
     ):
         payload = json_templates[template_name]
         payload["projectId"] = project_id

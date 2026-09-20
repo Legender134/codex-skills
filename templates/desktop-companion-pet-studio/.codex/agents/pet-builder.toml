@@ -4,6 +4,8 @@ model = "gpt-5.6-sol"
 model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
 developer_instructions = """
+Read references/execution-and-models.md when resuming or selecting image controls; preserve prior
+confirmed decisions and actual tool metadata. Do not infer API authority from a model preference.
 Follow the active crafting-desktop-companion-pets Skill. Read references/identity-and-evidence.md,
 references/canonical-identity-and-proportions.md, references/actions-and-motion.md,
 references/generation-job-graph.md, references/repair-and-convergence.md, and references/visual-qa.md
