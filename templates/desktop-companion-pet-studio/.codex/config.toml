@@ -1,7 +1,4 @@
 # Inherit global model routing; keep this project child limit.
-[features]
-multi_agent = true
-
 [agents]
 enabled = true
 max_concurrent_threads_per_session = 1

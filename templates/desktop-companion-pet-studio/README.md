@@ -10,13 +10,13 @@ This directory is an overlay, not a standalone project. Copy its contents, inclu
 
 ## Model routing
 
-The project profile uses `gpt-5.6-sol` with `xhigh` reasoning for the primary agent. Bounded delegated work uses `gpt-5.6-terra` with `max` reasoning, and the one-child cap keeps `max_concurrent_threads_per_session` at `1`. If either model name is unavailable for the local account, change it locally after copying the overlay.
+The project profile inherits the global route: `gpt-6-astra` with `low` reasoning for the primary agent and `gpt-5.6-sol` with `medium` reasoning for unspecified delegated work. The project keeps a one-child cap with `max_concurrent_threads_per_session = 1`; it does not pin account-specific model choices locally.
 
 The overlay also installs three version-neutral project agents under `.codex/agents/`:
 
-- `pet_researcher` uses `gpt-5.6-luna` with `max` reasoning in read-only mode to inventory source capabilities, recommend v2/v3/v4, and record format confirmation.
-- `pet_builder` uses `gpt-5.6-terra` with `max` reasoning and workspace-write access to build only the confirmed package version.
-- `pet_reviewer` uses `gpt-5.6-sol` with `xhigh` reasoning in read-only mode to review the selected version independently.
+- `pet_researcher` uses `gpt-5.6-luna` with `high` reasoning in read-only mode to inventory source capabilities, recommend v2/v3/v4, and record format confirmation.
+- `pet_builder` uses `gpt-5.6-sol` with `medium` reasoning and workspace-write access to build only the confirmed package version.
+- `pet_reviewer` uses `gpt-6-astra` with `low` reasoning in read-only mode to review the selected version independently.
 
 These agents follow the separately installed `crafting-desktop-companion-pets` Skill and its handoff contracts. The overlay intentionally contains no project-local pet Skill; install the global Skill first, then restart or reload Codex after copying the overlay.
 
