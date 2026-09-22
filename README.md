@@ -15,18 +15,13 @@ Portable Codex skills and independently maintained Windows/WSL routing configura
 
 [Setup guide](templates/codex-routing/SETUP.md) · [Installer and validation](templates/codex-routing/README.md)
 
-The configuration uses Astra Low for the primary, Sol Medium for implementation,
-Luna High for evidence discovery, and Terra Medium for bounded analysis and
-routine edits. Independent review uses Astra Low or Astra High when risk warrants
-it. Global child concurrency is 1; the optional EGS project overlays use 2.
-
-The package includes separate Windows and WSL instructions, six role templates,
-an installer with preview/backup/rollback, project validation, and the 14-name
-Superpowers disable policy. Global config homes remain independent. Project
-overrides and worktrees are checked separately; installation never grants trust.
-
-Only portable source is published. Account files, internal Confluence bundles,
-desktop runtime paths, local backups, and generated evidence stay on the host.
+The configuration uses GPT-6 Sol High for the primary and unspecified children.
+Named routes use Luna Low for read-only scout supervision, Luna High for exploration
+and routine edits, Luna Max for bounded implementation, Sol High for ordinary review,
+and Astra High for critical review. The child cap is two per primary session.
+Routing is global-only; the retired EGS project installer never writes project
+overrides. Preserve existing provider/login, project domain rules and unrelated
+configuration. See the routing package README for safe installation and rollback.
 
 ## Install with Codex
 

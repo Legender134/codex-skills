@@ -11,10 +11,9 @@ from pathlib import Path
 SOURCE_ROOT = Path(__file__).resolve().parents[1]
 README = SOURCE_ROOT / "README.md"
 APPLY_SECTIONS = (
-    "Revalidate and reinstall idempotently",
-    "Find and roll back one manifest",
+    "Plan, apply and validate",
+    "Recovery",
     "Resolve a same-name global agent conflict",
-    "Remove the local EGS overlays",
 )
 ROUTING_COMMAND = re.compile(
     r"\s-m\s+codex_routing\s+(?:install-global|install-egs|rollback)\b"

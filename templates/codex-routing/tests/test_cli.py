@@ -235,7 +235,7 @@ class CliTests(unittest.TestCase):
     def test_source_validation_binds_the_exact_approved_template_digests(self) -> None:
         report = validate_source(SOURCE_ROOT)
 
-        self.assertEqual(len(report.template_digests), 13)
+        self.assertEqual(len(report.template_digests), 8)
         self.assertEqual(
             tuple(path for path, _ in report.template_digests),
             (
@@ -247,11 +247,6 @@ class CliTests(unittest.TestCase):
                 "agents/worker.toml",
                 "global/windows-AGENTS.md",
                 "global/wsl-AGENTS.md",
-                "projects/3dgs-gen-AGENTS.md",
-                "projects/common-config.toml",
-                "projects/critical_reviewer.toml",
-                "projects/egs-main-AGENTS.md",
-                "projects/preprocess-cli-AGENTS.md",
             ),
         )
         self.assertNotIn("secret-token-value", repr(report))
@@ -325,74 +320,21 @@ class CliTests(unittest.TestCase):
             ):
                 main(["check-source", "--source-root", str(SOURCE_ROOT)])
 
-    def test_install_and_validate_egs_use_temporary_repositories_only(self) -> None:
+    def test_retired_project_commands_never_touch_repositories(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
-            workspace = Path(raw) / "workspace"
-            workspace.mkdir()
-            repos = tuple(
-                init_repo(workspace, name)
-                for name in ("preprocess-cli", "3dgs-gen", "egs-main")
-            )
-            arguments = [
-                "--workspace",
-                str(workspace),
-                "--source-root",
-                str(SOURCE_ROOT),
-            ]
-
-            code, stdout, stderr = run_main(["install-egs", *arguments])
-
-            self.assertEqual(code, 0)
-            self.assertIn("dry-run", stdout)
-            self.assertEqual(stderr, "")
-            self.assertTrue(all(not (repo / ".codex").exists() for repo in repos))
-
-            code, stdout, stderr = run_main(["install-egs", *arguments, "--apply"])
-
-            self.assertEqual(code, 0)
-            self.assertIn("applied", stdout)
-            self.assertEqual(stderr, "")
-            self.assertTrue(all((repo / ".codex" / "config.toml").is_file() for repo in repos))
-
-            code, stdout, stderr = run_main(["validate-egs", *arguments])
-
-            self.assertEqual(code, 0)
-            self.assertIn("valid=true", stdout)
-            self.assertEqual(stderr, "")
-
-    def test_validate_egs_wraps_git_launch_errors_at_the_cli_boundary(self) -> None:
-        with tempfile.TemporaryDirectory() as raw:
-            workspace = Path(raw) / "workspace"
-            workspace.mkdir()
-            for name in ("preprocess-cli", "3dgs-gen", "egs-main"):
-                init_repo(workspace, name)
-            arguments = [
-                "--workspace",
-                str(workspace),
-                "--source-root",
-                str(SOURCE_ROOT),
-            ]
-            self.assertEqual(run_main(["install-egs", *arguments, "--apply"])[0], 0)
-            real_run = subprocess.run
-
-            def fail_ignore_check(command, *args, **kwargs):
-                if "check-ignore" in command:
-                    raise OSError("injected Git launch failure")
-                return real_run(command, *args, **kwargs)
-
-            with mock.patch(
-                "codex_routing.project_install.subprocess.run",
-                side_effect=fail_ignore_check,
-            ):
-                code, stdout, stderr = run_main(["validate-egs", *arguments])
-
-            self.assertEqual(code, 2)
-            self.assertEqual(stdout, "")
-            self.assertEqual(len(stderr.splitlines()), 1)
-            self.assertTrue(stderr.startswith("error: "))
-            self.assertIn("Git ignore check", stderr)
-            self.assertNotIn("injected Git launch failure", stderr)
-            self.assertNotIn("Traceback", stderr)
+            workspace = Path(raw)
+            repo = init_repo(workspace, "preprocess-cli")
+            (repo / "AGENTS.md").write_text("User domain rules")
+            (repo / ".codex").mkdir()
+            config = repo / ".codex/config.toml"
+            config.write_text('[hooks]\nkeep = true\n')
+            before = {str(p.relative_to(workspace)): p.read_bytes() for p in workspace.rglob("*") if p.is_file()}
+            for arguments in (["install-egs"], ["install-egs", "--apply"], ["validate-egs"]):
+                code, stdout, stderr = run_main([*arguments, "--workspace", str(workspace), "--source-root", str(SOURCE_ROOT)])
+                self.assertEqual(code, 2)
+                self.assertEqual(stdout, "")
+                self.assertIn("project routing is retired", stderr)
+                self.assertEqual(before, {str(p.relative_to(workspace)): p.read_bytes() for p in workspace.rglob("*") if p.is_file()})
 
     def test_rollback_parses_manifest_dry_run_and_applies_only_with_apply(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

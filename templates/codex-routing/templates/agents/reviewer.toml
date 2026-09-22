@@ -1,7 +1,7 @@
 name = "reviewer"
 description = "Independent read-only review of correctness, regression, and test gaps."
-model = "gpt-6-astra"
-model_reasoning_effort = "low"
+model = "gpt-6-sol"
+model_reasoning_effort = "high"
 sandbox_mode = "read-only"
 developer_instructions = """
 Stay strictly read-only and review the specified change independently from the

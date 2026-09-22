@@ -15,43 +15,16 @@ from codex_routing.templates import load_template
 
 _REPARSE_POINT = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
 _EXPECTED_TEMPLATE_DIGESTS: dict[str, str] = {
-    "agents/routine_worker.toml": "036d222bfde9c82619f0f35bc74a1e8257b59d3289e41196f52894af9a0c0f4d",
-    "agents/critical_reviewer.toml": "d613a4cb503f40ec3a23d92ec57233020c0ee883cc6c9015316f997d94f762fd",
-    "agents/explorer.toml": (
-        "1a9980f408b220458985cbaa0100cb3ee7aff97e6b050fca5ecf3649437d9a26"
-    ),
-    "agents/reviewer.toml": (
-        "a8417f650d7e00b4f313a4347c0476e71bde38bcfc59a1082a8dc8d47d17dd3d"
-    ),
-    "agents/scout.toml": (
-        "ddd5f721ec481809c75c966bad85c8fa53e7c5f3ea28068142ebf89d6141d60d"
-    ),
-    "agents/worker.toml": (
-        "c81e6e6073154e0c917e002aa561db99d8c701a3d50be54c1fe1c79c737d6f1a"
-    ),
-    "global/windows-AGENTS.md": (
-        "42a8e02942a6a4e2c635d4ee301b78eb82bbf8d8c4d7e99dd6760707d7a236f0"
-    ),
-    "global/wsl-AGENTS.md": (
-        "813f679e261111d8e2902b59e43dce855570e76784b7ebfc3b95fb9c1de9ba62"
-    ),
-    "projects/3dgs-gen-AGENTS.md": (
-        "4ae732aae6a78f8bfdb7ac417b46a967a02945ee28e6a940df5d6cd389b2cb49"
-    ),
-    "projects/common-config.toml": (
-        "a8688cf1be0a447f454078190adeac254e2917af172ab53e55e05d4bbfd5b1d8"
-    ),
-    "projects/critical_reviewer.toml": (
-        "c783c5dddb9cbc73d213a77ed28b5aa3f8855b620281ab2d73253c4f16d18590"
-    ),
-    "projects/egs-main-AGENTS.md": (
-        "85893b8ee1c442e8f5ee7da55492e0a8f1447a61b4a390fd4a6f5f6ce50b2d89"
-    ),
-    "projects/preprocess-cli-AGENTS.md": (
-        "d71cfd355e56e117a9b22bf82fc1e5e69923cae824c0a06dc99b7532f808482d"
-    ),
+    "agents/routine_worker.toml": "3ca445b06ec2d29e0fa0d7af9fe96eeb23ac306993d55539f95756b8ee7b6e71",
+    "agents/critical_reviewer.toml": "60f571b2dba957aa7f4fb661995ba0e3a60385a47a7d447f03ccc365d77f52af",
+    "agents/explorer.toml": "b2815c97e9df121f4e69b6c3f3e0be0a8710d42f039fa62f5391fc839593a734",
+    "agents/reviewer.toml": "25bc68ee68b310ade6318c9c4f9f8df693f160eba03c8cef2b2a2d71377eb751",
+    "agents/scout.toml": "868ad6866055f7268c9f7487f88fe51824c03ea0c46e6dbbb84bb11e80e5edba",
+    "agents/worker.toml": "3bb2030b40c09e6cc2fd1c3c516b9cc315cedcbc8a432d732cf070d9e6cbd92d",
+    "global/windows-AGENTS.md": "9898136185b1369d4e91b62fd50f9be2eabf39d376a5c6e688e6146a4a158b08",
+    "global/wsl-AGENTS.md": "44810aefe57bd0d4d3e77ee7a8dddbc499f5966b6751c74b77824db6435e9791",
 }
-_EXPECTED_DIRECTORIES = {"", "agents", "global", "projects"}
+_EXPECTED_DIRECTORIES = {"", "agents", "global"}
 
 
 @dataclass(frozen=True, repr=False)

@@ -6,18 +6,18 @@
 
 | 用途 | 模型 | 推理等级 |
 |---|---|---|
-| 主代理 | gpt-6-astra | low |
-| 默认子代理、worker | gpt-5.6-sol | medium |
-| scout | gpt-5.6-luna | high |
-| explorer、routine_worker | gpt-5.6-terra | medium |
-| reviewer | gpt-6-astra | low |
+| 主代理、默认子代理 | gpt-6-sol | high |
+| worker | gpt-6-luna | max |
+| scout | gpt-6-luna | low |
+| explorer、routine_worker | gpt-6-luna | high |
+| reviewer | gpt-6-sol | high |
 | critical_reviewer | gpt-6-astra | high |
 
-全局子代理上限为 1；可选 EGS 项目覆盖为 2。小任务由主代理直接完成，只有能够独立推进的明确子任务才委派，不按角色流水线固定执行。模型可用性、角色支持和权限以当前客户端、账户和工具声明为准；只读角色文件不是对父级权限覆盖的隔离保证。
+每个主会话的全局子代理上限为 2，不包含主代理；不设置项目模型、角色或并发覆盖。只使用支持的 GPT-6 路由，不回退到 GPT-5.6。小任务由主代理直接完成，只有能够独立推进的明确子任务才委派，不按角色流水线固定执行。模型可用性、角色支持和权限以当前客户端、账户和工具声明为准；只读角色文件不是对父级权限覆盖的隔离保证。
 
 ## 1. 选择安装目标
 
-从仓库根目录进入 `templates/codex-routing`，按 [README](README.md#prepare-the-environment) 设置 Python、Windows Codex home 和 WSL Codex home，然后执行源校验及所选目标的预览。安装器需要 Python 3.11+ 和 Git；从 WSL 操作两个目标时，Windows 路径通过 `powershell.exe` 和 `wslpath` 解析。自定义 Windows `CODEX_HOME` 应明确覆盖 `WINDOWS_CODEX_HOME`，不要默认它位于用户目录。
+从仓库根目录进入 `templates/codex-routing`，按 [README](README.md#prepare-the-environment) 设置 Python、Windows Codex home 和 WSL Codex home，然后执行源校验及所选目标的预览。安装器需要 Python 3.11+；从 WSL 操作两个目标时，Windows 路径通过 `powershell.exe` 和 `wslpath` 解析。自定义 Windows `CODEX_HOME` 应明确覆盖 `WINDOWS_CODEX_HOME`，不要默认它位于用户目录。
 
 ```bash
 cd templates/codex-routing
@@ -65,10 +65,10 @@ python3 -m venv "$HOME/.local/share/codex-skill-runtimes/hatch-pet"
 
 项目级配置和更深层指令可能覆盖全局设置；项目配置是否加载还受信任状态影响。全局更新不代表所有项目覆盖都被删除。
 
-- 三个指定 EGS 仓库可使用 `validate-egs` 与 `install-egs` 预览。完整由 Git 跟踪的配置属于仓库，校验通过后不改写；部分跟踪或未知冲突会拒绝处理。
-- 其他项目逐个检查 `.codex/config.toml`、`.codex/agents/` 及适用的 `AGENTS.md`。通用项目应继承全局模型，只保留必要的项目角色与并发例外。
+- `install-egs`、`validate-egs` 已停用，返回错误且不读写项目；只使用全局路由安装入口。
+- 其他项目逐个检查 `.codex/config.toml`、`.codex/agents/` 及适用的 `AGENTS.md`。项目继承全局路由，只保留业务规则及与路由无关的 hooks、skills、state；旧覆盖需单独审查和备份后处理。
 - 用 `git worktree list --porcelain` 盘点工作树。每个工作树有自己的目录上下文，可能含独立本地覆盖；从各目录验证有效配置，不能只检查主工作树。
-- `templates/desktop-companion-pet-studio` 是另一个项目覆盖，继承全局主模型并保留专用宠物角色。不要把 EGS 覆盖应用到宠物项目。
+- 项目模板也应继承全局路由；具体领域的任务要求作为业务说明传给全局角色，不另维护模型表。
 
 安装器不会自动信任仓库、遍历所有工作树、删除旧覆盖或清理备份。已有备份不在活动发现目录中即可保留；未知文件和分支不应为了“更新全局”而删除。
 
@@ -82,7 +82,7 @@ Confluence 等组织服务留在本机：由本机原生 Node 启动组织提供
 
 ## 6. 验收与回退
 
-按 README 执行 `validate-global`、适用的项目校验及再次安装预览，确认没有意外改动。刷新受影响的 Codex 任务，核对实际角色与技能目录；确认显式规划入口可用、Superpowers 禁用生效。工具初始化与实际只读请求应单独验证，配置语法通过不等于全部工具连通。
+按 README 执行 `validate-global`、逐项目覆盖检查及再次安装预览，确认没有意外改动。刷新受影响的 Codex 任务，核对实际角色与技能目录；确认显式规划入口可用、Superpowers 禁用生效。工具初始化与实际只读请求应单独验证，配置语法通过不等于全部工具连通。
 
 保留安装器打印的事务清单，回退仅针对所选事务，并在文件后续被修改时拒绝覆盖。技能策略合并、手动技能安装和可选 Linux 入口不属于路由事务，需保留各自备份。不要用全目录回滚覆盖后续用户工作。
 

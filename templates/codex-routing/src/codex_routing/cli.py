@@ -18,13 +18,6 @@ from codex_routing.global_install import (
     validate_global_install,
 )
 from codex_routing.managed_files import rollback_transaction
-from codex_routing.project_install import (
-    ProjectInstallPlan,
-    ProjectValidationReport,
-    install_egs_workspace,
-    validate_project_overlay,
-)
-from codex_routing.spec import REPO_POLICIES
 from codex_routing.validate import RollbackPlan, SourceValidationReport, plan_rollback, validate_source
 
 
@@ -55,14 +48,14 @@ def build_parser() -> argparse.ArgumentParser:
     _add_workspace_command(
         commands,
         "install-egs",
-        "install local EGS project overlays",
+        "retired: use global routing; leaves projects untouched",
         include_apply=True,
     )
     _add_global_command(
         commands, "validate-global", "validate a global routing configuration"
     )
     _add_workspace_command(
-        commands, "validate-egs", "validate local EGS project overlays"
+        commands, "validate-egs", "retired: inspect project overrides separately"
     )
 
     rollback = commands.add_parser(
@@ -110,13 +103,11 @@ def dispatch(args: argparse.Namespace) -> int:
         )
         _print_global_plan(plan, status="applied" if plan.applied else "dry-run")
         return 0
-    if args.command == "install-egs":
-        _check_source(args.source_root)
-        plans = install_egs_workspace(
-            args.workspace, args.source_root, apply=args.apply
+    if args.command in {"install-egs", "validate-egs"}:
+        raise RoutingConfigError(
+            "project routing is retired; use install-global/validate-global. "
+            "Existing project instructions, hooks and overrides were not modified."
         )
-        _print_project_plans(plans, status="applied" if args.apply else "dry-run")
-        return 0
     if args.command == "validate-global":
         _check_source(args.source_root)
         report = validate_global_install(
@@ -124,16 +115,6 @@ def dispatch(args: argparse.Namespace) -> int:
         )
         _print_global_validation(report)
         return 0 if report.valid else 1
-    if args.command == "validate-egs":
-        _check_source(args.source_root)
-        reports = tuple(
-            validate_project_overlay(
-                args.workspace / name, name, args.source_root
-            )
-            for name in REPO_POLICIES
-        )
-        _print_project_validations(reports)
-        return 0 if all(report.valid for report in reports) else 1
     if args.command == "rollback":
         plan = plan_rollback(args.manifest)
         if args.apply:
@@ -215,19 +196,6 @@ def _print_global_plan(plan: GlobalInstallPlan, *, status: str) -> None:
         print(f"manifest={_path_text(plan.manifest_path)}")
 
 
-def _print_project_plans(
-    plans: tuple[ProjectInstallPlan, ...], *, status: str
-) -> None:
-    for plan in plans:
-        print(
-            f"{status} egs repo={plan.repo_name} "
-            f"root={_path_text(plan.repo_root)} updates={len(plan.updates)} ownership={plan.ownership}"
-        )
-        _print_updates(plan.updates)
-        if plan.manifest_path is not None:
-            print(f"manifest={_path_text(plan.manifest_path)}")
-
-
 def _print_updates(updates) -> None:
     for update in updates:
         digest = hashlib.sha256(update.after).hexdigest()
@@ -240,17 +208,6 @@ def _print_global_validation(report: GlobalValidationReport) -> None:
         print(f"agent_file={_path_text(agent_path)}")
     tables = ",".join(report.unrelated_table_names) or "none"
     print(f"unrelated_tables={tables}")
-
-
-def _print_project_validations(
-    reports: tuple[ProjectValidationReport, ...]
-) -> None:
-    for report in reports:
-        ignored = ",".join(_path_text(path) for path in report.ignored_paths) or "none"
-        print(
-            f"egs validation repo={report.repo_name} valid={str(report.valid).lower()} "
-            f"root={_path_text(report.repo_root)} ignored={ignored} ownership={report.ownership}"
-        )
 
 
 def _print_rollback(

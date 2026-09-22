@@ -66,16 +66,16 @@ class GlobalInstallTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as raw:
             home = self.make_home(raw, target="windows")
             (home / "config.toml").write_text(
-                'model = "gpt-5.6-sol"\n[mcp_servers.keep]\ncommand = "keep"\n',
+                'model = "gpt-6-sol"\n[mcp_servers.keep]\ncommand = "keep"\n',
                 encoding="utf-8",
             )
 
             plan = plan_global_install(home, "windows", SOURCE_ROOT)
             config = tomllib.loads(plan.config_after.decode("utf-8"))
 
-            self.assertEqual(config["model"], "gpt-6-astra")
-            self.assertEqual(config["model_reasoning_effort"], "low")
-            self.assertEqual(config["agents"]["max_concurrent_threads_per_session"], 1)
+            self.assertEqual(config["model"], "gpt-6-sol")
+            self.assertEqual(config["model_reasoning_effort"], "high")
+            self.assertEqual(config["agents"]["max_concurrent_threads_per_session"], 2)
             self.assertEqual(config["mcp_servers"]["keep"]["command"], "keep")
             self.assertFalse(plan.applied)
 
@@ -237,14 +237,14 @@ class GlobalInstallTests(unittest.TestCase):
                 if update.path.parent == home / "agents"
             }
 
-            self.assertEqual(config["model"], "gpt-6-astra")
-            self.assertEqual(config["model_reasoning_effort"], "low")
-            self.assertEqual(config["agents"]["max_concurrent_threads_per_session"], 1)
+            self.assertEqual(config["model"], "gpt-6-sol")
+            self.assertEqual(config["model_reasoning_effort"], "high")
+            self.assertEqual(config["agents"]["max_concurrent_threads_per_session"], 2)
             self.assertEqual(
-                config["agents"]["default_subagent_model"], "gpt-5.6-sol"
+                config["agents"]["default_subagent_model"], "gpt-6-sol"
             )
             self.assertEqual(
-                config["agents"]["default_subagent_reasoning_effort"], "medium"
+                config["agents"]["default_subagent_reasoning_effort"], "high"
             )
             self.assertEqual(
                 set(role_updates), {f"{name}.toml" for name in ROLE_NAMES}
@@ -259,11 +259,11 @@ class GlobalInstallTests(unittest.TestCase):
             worker = tomllib.loads(role_updates["worker.toml"].decode("utf-8"))
             self.assertEqual(
                 (scout["model"], scout["model_reasoning_effort"]),
-                ("gpt-5.6-luna", "high"),
+                ("gpt-6-luna", "low"),
             )
             self.assertEqual(
                 (worker["model"], worker["model_reasoning_effort"]),
-                ("gpt-5.6-sol", "medium"),
+                ("gpt-6-luna", "max"),
             )
 
     def test_global_agents_managed_block_preserves_foreign_text_and_crlf(self) -> None:
@@ -462,7 +462,7 @@ class GlobalInstallTests(unittest.TestCase):
             install_global(home, "wsl", SOURCE_ROOT, apply=True)
             config = home / "config.toml"
             foreign = config.read_bytes().replace(
-                b'model = "gpt-6-astra"', b'model = "foreign-model"'
+                b'model = "gpt-6-sol"', b'model = "foreign-model"'
             )
 
             def mutate_before_transaction(*args, **kwargs):
@@ -536,12 +536,12 @@ class GlobalInstallTests(unittest.TestCase):
             self.assertEqual(
                 report.owned_values,
                 (
-                    ("model", "gpt-6-astra"),
-                    ("model_reasoning_effort", "low"),
+                    ("model", "gpt-6-sol"),
+                    ("model_reasoning_effort", "high"),
                     ("agents.enabled", True),
-                    ("agents.max_concurrent_threads_per_session", 1),
-                    ("agents.default_subagent_model", "gpt-5.6-sol"),
-                    ("agents.default_subagent_reasoning_effort", "medium"),
+                    ("agents.max_concurrent_threads_per_session", 2),
+                    ("agents.default_subagent_model", "gpt-6-sol"),
+                    ("agents.default_subagent_reasoning_effort", "high"),
                     ("agents.interrupt_message", True),
                 ),
             )
@@ -621,7 +621,7 @@ class GlobalInstallTests(unittest.TestCase):
             scout_template = source_root / "templates" / "agents" / "scout.toml"
             scout_template.write_text(
                 scout_template.read_text(encoding="utf-8").replace(
-                    'model = "gpt-5.6-luna"',
+                    'model = "gpt-6-luna"',
                     'model = "unapproved-model"',
                 ),
                 encoding="utf-8",
@@ -657,8 +657,8 @@ class GlobalInstallTests(unittest.TestCase):
             scout_template = source_root / "templates" / "agents" / "scout.toml"
             scout_template.write_text(
                 scout_template.read_text(encoding="utf-8").replace(
-                    'description = "Read-only discovery of files, symbols, metadata, and deterministic logs."',
-                    'description = "Unapproved instructions with unchanged policy."',
+                    'description = ',
+                    'description = "Unapproved instructions" # ',
                 ),
                 encoding="utf-8",
             )
@@ -677,8 +677,8 @@ class GlobalInstallTests(unittest.TestCase):
             scout_template = source_root / "templates" / "agents" / "scout.toml"
             scout_template.write_text(
                 scout_template.read_text(encoding="utf-8").replace(
-                    'description = "Read-only discovery of files, symbols, metadata, and deterministic logs."',
-                    'description = "Unapproved instructions with unchanged policy."',
+                    'description = ',
+                    'description = "Unapproved instructions" # ',
                 ),
                 encoding="utf-8",
             )
@@ -789,7 +789,7 @@ class GlobalInstallTests(unittest.TestCase):
             config_path = home / "config.toml"
             config_path.write_text(
                 config_path.read_text(encoding="utf-8").replace(
-                    'model = "gpt-6-astra"',
+                    'model = "gpt-6-sol"',
                     'model = "secret-token-value"',
                 ),
                 encoding="utf-8",
@@ -813,12 +813,12 @@ class GlobalInstallTests(unittest.TestCase):
                 ("float for boolean", "interrupt_message = true", "interrupt_message = 1.0"),
                 (
                     "boolean for integer",
-                    "max_concurrent_threads_per_session = 1",
+                    "max_concurrent_threads_per_session = 2",
                     "max_concurrent_threads_per_session = true",
                 ),
                 (
                     "float for integer",
-                    "max_concurrent_threads_per_session = 1",
+                    "max_concurrent_threads_per_session = 2",
                     "max_concurrent_threads_per_session = 1.0",
                 ),
             ):

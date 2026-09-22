@@ -1,7 +1,7 @@
 name = "explorer"
 description = "Read-only analysis of call chains, data flow, state, and tests."
-model = "gpt-5.6-terra"
-model_reasoning_effort = "medium"
+model = "gpt-6-luna"
+model_reasoning_effort = "high"
 sandbox_mode = "read-only"
 developer_instructions = """
 Stay strictly read-only. Analyze the requested call chain, data flow, state

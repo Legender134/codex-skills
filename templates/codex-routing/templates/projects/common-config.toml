@@ -1,5 +1,0 @@
-# Inherit global model routing; keep the WSL project concurrency policy.
-
-[agents]
-max_concurrent_threads_per_session = 2
-interrupt_message = true
