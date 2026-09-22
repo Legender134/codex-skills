@@ -5,11 +5,13 @@ Use the installed `crafting-desktop-companion-pets` skill. Read the chosen run's
 existing state record first, then its brief, selected contracts and relevant skill
 references. Preserve completed work; do not restart because a task resumed.
 
-The project preference is GPT-6 Astra Low. Record actual model/effort only when
-exposed by the host. Preserve login, provider, billing and permission settings.
-Use the configured pet roles for bounded work when available, with at most one
-active child and one writer. The primary owns integration and final acceptance.
-Role declarations do not prove runtime availability or effective isolation.
+Inherit model, effort, role and concurrency settings from user-global Codex
+configuration; do not install project routing overrides. Record actual model/effort
+only when exposed by the host. Preserve login, provider, billing and permissions.
+Use the business briefs in docs/agent-briefs/ as task context for suitable global
+roles, not as installed agent definitions. Follow the global child cap and keep one
+writer. The primary owns integration and final acceptance. Check live availability
+and permissions; a brief's sandbox preference does not prove effective isolation.
 
 Use built-in image generation by default and read the skill's execution-and-models
 reference for model capabilities. API preferences do not authorize API billing;

@@ -1,6 +1,6 @@
 # DesktopCompanion Pet Studio overlay
 
-This directory is an overlay, not a standalone project. Copy its contents, including the hidden `.codex` directory, into the root of a compatible DesktopCompanion checkout. Do not nest the `desktop-companion-pet-studio` directory inside that checkout. Review destination-file conflicts first: merge `AGENTS.md` and `.codex/config.toml` with existing instructions and settings rather than replacing them blindly. Do not copy an installed application's binaries or personal pet run into the shared repository.
+This directory is an overlay, not a standalone project. Copy its contents into the root of a compatible DesktopCompanion checkout. Do not nest the `desktop-companion-pet-studio` directory inside that checkout. Review destination-file conflicts first: merge `AGENTS.md` and any toolchain conflicts with existing files rather than replacing them blindly. Do not copy an installed application's binaries or personal pet run into the shared repository.
 
 ## Prerequisites
 
@@ -10,15 +10,17 @@ This directory is an overlay, not a standalone project. Copy its contents, inclu
 
 ## Model routing
 
-The project profile defaults to `gpt-6-astra` with `low` reasoning for the primary agent. This is a project preference, not proof of a running task's model: task/UI overrides can take precedence. The one-child cap keeps `max_concurrent_threads_per_session` at `1`; keep one writer. If a configured model is unavailable for the local account, select an available model locally without changing provider, login or billing. Higher effort is a targeted choice for difficult identity, motion or causal-repair decisions, not a mandatory pipeline.
+The overlay inherits model, effort, role and concurrency settings from user-global Codex configuration. It installs no `.codex/config.toml` or `.codex/agents/` overrides. Keep one writer and follow the global child cap. Preserve provider, login, billing and permission settings.
 
-The overlay also installs three version-neutral project agents under `.codex/agents/`:
+Three version-neutral business briefs live under `docs/agent-briefs/`:
 
-- `pet_researcher` uses `gpt-5.6-luna` with `high` reasoning in read-only mode to inventory source capabilities, recommend v2/v3/v4, and record format confirmation.
-- `pet_builder` uses `gpt-5.6-sol` with `medium` reasoning and workspace-write access to build only the confirmed package version.
-- `pet_reviewer` uses `gpt-6-astra` with `low` reasoning in read-only mode to review the selected version independently.
+- `pet-researcher.toml`: source inventory, version recommendation and format confirmation; pass as context to a suitable global read-only exploration role.
+- `pet-builder.toml`: build only the confirmed package version; pass as context to a suitably scoped global worker.
+- `pet-reviewer.toml`: independent selected-version review; pass as context to a global reviewer or critical reviewer as warranted.
 
-These agents follow the separately installed `crafting-desktop-companion-pets` Skill and its handoff contracts. The overlay intentionally contains no project-local pet Skill; install the global Skill first, then restart or reload Codex after copying the overlay.
+These TOML files are task context, not auto-discovered agent definitions. Their sandbox preferences describe task boundaries, not permission enforcement. Do not copy them into an active agents directory. The primary supplies exact paths, scope and acceptance checks along with the relevant brief.
+
+The briefs follow the separately installed `crafting-desktop-companion-pets` Skill and its handoff contracts. The overlay intentionally contains no project-local pet Skill; install the global Skill first.
 
 Check live role availability and effective permissions when delegating; a TOML declaration alone does not prove either. Existing accepted style, format and scope do not need repeated confirmation on resume. Internal QA still applies, and user acceptance of a particular image remains separate.
 
@@ -36,7 +38,7 @@ Example request after setup:
 
 The workflow supports v2/v3/v4; do not copy another pet's dimensions or action quotas. Validate the exact selected-format package root and bytes you intend to hand off. In v3 the package directory name must match the pet ID.
 
-The project config contains portable behavior only. Codex trust remains user-global and path-specific: add trust only for the exact local checkout path in the user configuration, never for a parent directory or wildcard, and never add a `[projects]` section to this overlay. Likewise, add only the exact checkout path to Git's global safe-directory list; do not use `safe.directory=*`:
+The overlay contains no project routing configuration. Codex trust remains user-global and path-specific: add trust only for the exact local checkout path in the user configuration, never for a parent directory or wildcard, and never add a `[projects]` section to this overlay. Likewise, add only the exact checkout path to Git's global safe-directory list; do not use `safe.directory=*`:
 
 ```powershell
 git config --global --add safe.directory '<exact-checkout-path>'

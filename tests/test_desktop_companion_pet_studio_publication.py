@@ -84,10 +84,10 @@ EXPECTED_TOOLCHAIN_FILES = {
     "tools/verify_pet_media.py",
     "tools/verify_qt_webp.py",
 }
-EXPECTED_PROJECT_AGENT_FILES = {
-    ".codex/agents/pet-builder.toml",
-    ".codex/agents/pet-researcher.toml",
-    ".codex/agents/pet-reviewer.toml",
+EXPECTED_TASK_BRIEF_FILES = {
+    "docs/agent-briefs/pet-builder.toml",
+    "docs/agent-briefs/pet-researcher.toml",
+    "docs/agent-briefs/pet-reviewer.toml",
 }
 FORBIDDEN_SUFFIXES = {".exe", ".dll", ".onnx", ".whl", ".zip", ".7z", ".tar", ".gz"}
 GENERIC_QT_PYTHON = r"C:\path\to\PySide6\python.exe"
@@ -115,28 +115,21 @@ def test_pet_skill_is_complete_and_locally_linked() -> None:
         assert (SKILL / target).is_file(), target
 
 
-def test_project_profile_routes_models_without_machine_trust() -> None:
-    config_path = TEMPLATE / ".codex" / "config.toml"
-    config = tomllib.loads(config_path.read_text(encoding="utf-8"))
-    assert config["model"] == "gpt-6-astra"
-    assert config["model_reasoning_effort"] == "low"
-    assert "model_provider" not in config
-    assert "approval_policy" not in config
-    assert config["agents"]["max_concurrent_threads_per_session"] == 1
-    assert "default_subagent_model" not in config["agents"]
-    assert "default_subagent_reasoning_effort" not in config["agents"]
-    assert "projects" not in config
+def test_project_profile_inherits_global_routing() -> None:
+    assert not (TEMPLATE / ".codex" / "config.toml").exists()
+    assert not list((TEMPLATE / ".codex" / "agents").glob("*.toml"))
+    assert "user-global Codex" in (TEMPLATE / "AGENTS.md").read_text(encoding="utf-8")
 
 
-def test_project_profile_publishes_version_neutral_pet_agents() -> None:
+def test_project_profile_publishes_version_neutral_pet_briefs() -> None:
     files = relative_files(TEMPLATE)
-    assert EXPECTED_PROJECT_AGENT_FILES <= files
+    assert EXPECTED_TASK_BRIEF_FILES <= files
     assert not (TEMPLATE / ".agents").exists()
 
     expected = {
-        "pet-researcher.toml": ("pet_researcher", "gpt-5.6-luna", "high", "read-only"),
-        "pet-builder.toml": ("pet_builder", "gpt-5.6-sol", "medium", "workspace-write"),
-        "pet-reviewer.toml": ("pet_reviewer", "gpt-6-astra", "low", "read-only"),
+        "pet-researcher.toml": ("pet_researcher", "read-only"),
+        "pet-builder.toml": ("pet_builder", "workspace-write"),
+        "pet-reviewer.toml": ("pet_reviewer", "read-only"),
     }
     required_references = {
         "pet-researcher.toml": {
@@ -177,13 +170,13 @@ def test_project_profile_publishes_version_neutral_pet_agents() -> None:
         "pet-builder.toml": "Read exactly the confirmed format authority",
         "pet-reviewer.toml": "Read exactly the selected format authority",
     }
-    for filename, (name, model, effort, sandbox) in expected.items():
-        path = TEMPLATE / ".codex" / "agents" / filename
+    for filename, (name, sandbox) in expected.items():
+        path = TEMPLATE / "docs" / "agent-briefs" / filename
         agent = tomllib.loads(path.read_text(encoding="utf-8"))
         instructions = agent["developer_instructions"]
         assert agent["name"] == name
-        assert agent["model"] == model
-        assert agent["model_reasoning_effort"] == effort
+        assert "model" not in agent
+        assert "model_reasoning_effort" not in agent
         assert agent["sandbox_mode"] == sandbox
         assert "crafting-desktop-companion-pets" in instructions
         normalized_instructions = " ".join(instructions.split())
@@ -208,7 +201,7 @@ def test_project_profile_publishes_version_neutral_pet_agents() -> None:
         assert "mandatory review baseline" not in instructions
 
     researcher = tomllib.loads(
-        (TEMPLATE / ".codex" / "agents" / "pet-researcher.toml").read_text(
+        (TEMPLATE / "docs" / "agent-briefs" / "pet-researcher.toml").read_text(
             encoding="utf-8"
         )
     )["developer_instructions"]
@@ -221,7 +214,7 @@ def test_project_profile_publishes_version_neutral_pet_agents() -> None:
         assert field in researcher
 
     builder = tomllib.loads(
-        (TEMPLATE / ".codex" / "agents" / "pet-builder.toml").read_text(
+        (TEMPLATE / "docs" / "agent-briefs" / "pet-builder.toml").read_text(
             encoding="utf-8"
         )
     )["developer_instructions"]
@@ -229,7 +222,7 @@ def test_project_profile_publishes_version_neutral_pet_agents() -> None:
         assert field in builder
 
     reviewer = tomllib.loads(
-        (TEMPLATE / ".codex" / "agents" / "pet-reviewer.toml").read_text(
+        (TEMPLATE / "docs" / "agent-briefs" / "pet-reviewer.toml").read_text(
             encoding="utf-8"
         )
     )["developer_instructions"]

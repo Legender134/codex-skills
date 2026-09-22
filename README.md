@@ -45,9 +45,9 @@ This installs the `crafting-desktop-companion-pets` Skill; `skill-installer` doe
 
 ### Copy the project overlay
 
-The project overlay is source, configuration, and toolchain material, not a Skill. Copy the contents of `templates/desktop-companion-pet-studio` (including its hidden `.codex` directory) into the root of a compatible DesktopCompanion checkout; do not nest the directory. Merge existing `AGENTS.md` and configuration conflicts instead of overwriting user settings. Read the [detailed project overlay README](templates/desktop-companion-pet-studio/README.md) for prerequisites, setup, and verification.
+The project overlay is source, configuration, and toolchain material, not a Skill. Copy the contents of `templates/desktop-companion-pet-studio` into the root of a compatible DesktopCompanion checkout; do not nest the directory. Merge existing `AGENTS.md` and configuration conflicts instead of overwriting user settings. Read the [detailed project overlay README](templates/desktop-companion-pet-studio/README.md) for prerequisites, setup, and verification.
 
-The pet profile now defaults to Astra Low, documents Image 2.5 capabilities without changing the host's built-in image backend, and creates resumable run-state records. Approved decisions persist; internal visual checks still precede downstream production and final acceptance. No API billing or pet installation is authorized by copying the template.
+The pet overlay inherits user-global routing, preserves pet-specific task briefs without installing project roles, documents Image 2.5 capabilities without changing the host's built-in image backend, and creates resumable run-state records. Approved decisions persist; internal visual checks still precede downstream production and final acceptance. No API billing or pet installation is authorized by copying the template.
 
 ## Manual Installation
 

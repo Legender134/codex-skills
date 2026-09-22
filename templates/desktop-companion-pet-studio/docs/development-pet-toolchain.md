@@ -27,7 +27,7 @@
 | scripts/pet_toolchain_common.ps1 | 严格 UTF-8/JSON、路径、哈希、进程和清理边界 |
 | [scripts/setup_pet_toolchain.ps1](../scripts/setup_pet_toolchain.ps1) | 唯一的下载、安装、staging 和发布入口 |
 | [scripts/verify_pet_toolchain.ps1](../scripts/verify_pet_toolchain.ps1)、[tools/verify_pet_media.py](../tools/verify_pet_media.py)、[tools/verify_qt_webp.py](../tools/verify_qt_webp.py) | 对已发布候选的独立门禁 |
-| .codex/config.toml、测试和本说明 | 项目级可共享设置、离线契约和操作说明 |
+| AGENTS.md、docs/agent-briefs/、测试和本说明 | 业务说明、任务简报、离线契约；模型与并发继承全局配置 |
 
 默认机器本地 ToolRoot 是：
 

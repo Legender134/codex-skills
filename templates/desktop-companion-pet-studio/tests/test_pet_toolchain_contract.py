@@ -51,11 +51,6 @@ def short_local_tmp_path() -> Path:
         shutil.rmtree(path)
 
 
-def load_project_config() -> dict[str, object]:
-    with PROJECT_CONFIG.open("rb") as stream:
-        return tomllib.load(stream)
-
-
 def iter_values(value: object):
     if isinstance(value, dict):
         for nested in value.values():
@@ -154,26 +149,18 @@ def run_setup_script(command: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def test_project_codex_config_has_exact_pet_routing() -> None:
-    config = load_project_config()
-
-    assert config == {
-        "model": "gpt-6-astra",
-        "model_reasoning_effort": "low",
-        "features": {"multi_agent": True},
-        "agents": {
-            "enabled": True,
-            "max_concurrent_threads_per_session": 1,
-            "interrupt_message": True,
-        },
-    }
+def test_project_codex_config_inherits_global_routing() -> None:
+    assert not PROJECT_CONFIG.exists()
+    assert not list((REPO_ROOT / ".codex" / "agents").glob("*.toml"))
 
 
-def test_project_codex_config_contains_no_machine_or_security_override() -> None:
-    config = load_project_config()
+def test_project_briefs_contain_no_model_or_machine_override() -> None:
     forbidden_keys = {
+        "model",
+        "model_reasoning_effort",
+        "model_provider",
+        "agents",
         "approval_policy",
-        "sandbox_mode",
         "projects",
         "mcp_servers",
         "plugins",
@@ -181,12 +168,16 @@ def test_project_codex_config_contains_no_machine_or_security_override() -> None
         "shell_environment_policy",
     }
 
-    assert forbidden_keys.isdisjoint(config)
-    for value in iter_values(config):
-        if isinstance(value, str):
-            assert not WINDOWS_ABSOLUTE.match(value)
-            assert "admin" not in value.casefold()
-            assert not PureWindowsPath(value).is_absolute()
+    briefs = sorted((REPO_ROOT / "docs" / "agent-briefs").glob("*.toml"))
+    assert len(briefs) == 3
+    for path in briefs:
+        config = tomllib.loads(path.read_text(encoding="utf-8"))
+        assert forbidden_keys.isdisjoint(config)
+        assert config["sandbox_mode"] in {"read-only", "workspace-write"}
+        for value in iter_values(config):
+            if isinstance(value, str):
+                assert not WINDOWS_ABSOLUTE.match(value)
+                assert not PureWindowsPath(value).is_absolute()
 
 
 def test_pet_toolchain_lock_has_exact_assets() -> None:

@@ -1,7 +1,5 @@
 name = "pet_builder"
 description = "Scoped DesktopCompanion v2/v3/v4 pet builder for selected masters, key poses, layers, atlases, manifests, previews, and focused tests."
-model = "gpt-5.6-sol"
-model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
 developer_instructions = """
 Read references/execution-and-models.md when resuming or selecting image controls; preserve prior
