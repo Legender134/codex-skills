@@ -15,14 +15,14 @@ from codex_routing.templates import load_template
 
 _REPARSE_POINT = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
 _EXPECTED_TEMPLATE_DIGESTS: dict[str, str] = {
-    "agents/routine_worker.toml": "3ca445b06ec2d29e0fa0d7af9fe96eeb23ac306993d55539f95756b8ee7b6e71",
-    "agents/critical_reviewer.toml": "60f571b2dba957aa7f4fb661995ba0e3a60385a47a7d447f03ccc365d77f52af",
+    "agents/routine_worker.toml": "51c21e1fc820e0ea5b1f91e35ec00e5b08256ab2a0339d62896b0f4bd6e13b6a",
+    "agents/critical_reviewer.toml": "1545781c799b999a34135772fc884eda443dd5b9bf0fe6e52556476dd621d578",
     "agents/explorer.toml": "b2815c97e9df121f4e69b6c3f3e0be0a8710d42f039fa62f5391fc839593a734",
-    "agents/reviewer.toml": "25bc68ee68b310ade6318c9c4f9f8df693f160eba03c8cef2b2a2d71377eb751",
-    "agents/scout.toml": "956e026b01bac79abd7b854ca81acb7c7222d25b4ee6ca9a76336cbee297c98e",
-    "agents/worker.toml": "3bb2030b40c09e6cc2fd1c3c516b9cc315cedcbc8a432d732cf070d9e6cbd92d",
-    "global/windows-AGENTS.md": "b673ed8225d9bdc0e01071c4dafa30831cf61a8656c64aaf679e5d13a6da7c46",
-    "global/wsl-AGENTS.md": "a276ff23a3f914d9535428ab3acab5d8b4b42eda20e17b628ee6ac8c93998a74",
+    "agents/reviewer.toml": "3f6f5fd8b3d8cb5223530a19ded78fbb41bb26af4aca355fc37e5ec49d1733d6",
+    "agents/scout.toml": "849ccb3a3dd8c111cce191597398a6da67527fc1854af53ead62a2132a174081",
+    "agents/worker.toml": "1901f40b5003972921a42a5f969fa0b862d4e5d4535f0dc9660fd8eaceac8bd4",
+    "global/windows-AGENTS.md": "e5abd2ab4b87bace6c6acd87f40971141ff9276966e063f203e6513b1d8a7a6b",
+    "global/wsl-AGENTS.md": "f4f78c2eac4e21dc1ac745ea82eb54b90452962f85d3e5fa662143f76a06706b",
 }
 _EXPECTED_DIRECTORIES = {"", "agents", "global"}
 

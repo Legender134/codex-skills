@@ -15,6 +15,10 @@
 
 每个主会话的全局子代理上限为 2，不包含主代理；不设置项目模型、角色或并发覆盖。只使用支持的 GPT-6 路由，不回退到 GPT-5.6。小任务由主代理直接完成，只有能够独立推进的明确子任务才委派，不按角色流水线固定执行。模型可用性、角色支持和权限以当前客户端、账户和工具声明为准；只读角色文件不是对父级权限覆盖的隔离保证。
 
+安装位置、项目继承和配置迁移属于本文的维护说明，不放入每次任务加载的全局 AGENTS。修改文件后还要核对新会话实际加载的设置，不能推定已运行会话立即生效。
+
+`critical_reviewer` 保留训练、CUDA、重建的专业检查项，同时以本次变更的具体风险决定检查范围。梯度累积、内核同步、位姿组合顺序等改动可能需要深入审查；修改训练日志并不会因为出现“训练”而自动升级。其他开发中的权限隔离、并发写入、数据迁移等也可使用该角色。普通 reviewer 报告未解决的风险和缺失证据，由主代理决定是否追加审查；不固定串行执行两个角色。坐标系、容差、验收指标等项目事实从任务和项目要求中读取，不写成全局默认值。
+
 ## 1. 选择安装目标
 
 从仓库根目录进入 `templates/codex-routing`，按 [README](README.md#prepare-the-environment) 设置 Python、Windows Codex home 和 WSL Codex home，然后执行源校验及所选目标的预览。安装器需要 Python 3.11+；从 WSL 操作两个目标时，Windows 路径通过 `powershell.exe` 和 `wslpath` 解析。自定义 Windows `CODEX_HOME` 应明确覆盖 `WINDOWS_CODEX_HOME`，不要默认它位于用户目录。
@@ -80,6 +84,10 @@ python3 -m venv "$HOME/.local/share/codex-skill-runtimes/hatch-pet"
 `scripts/codex-wsl` 是可选 Linux 入口：调用当前用户的 `$HOME/.local/bin/codex` 并补齐 PATH。只有该位置已经是可运行的 Linux Codex、且没有指回这个入口形成循环时，才将它安装到 `/usr/local/bin/codex`。存在不同的系统入口时先保留并审查，切勿把脚本安装到它自身调用的 `$HOME/.local/bin/codex`。仓库不分发 Codex 二进制，也不代办安装或升级。
 
 Confluence 等组织服务留在本机：由本机原生 Node 启动组织提供并验证的固定包版本；包、认证和组织地址不随此仓库发布。不要将 Windows GUI MCP、桌面通信管道、通知路径或凭据复制到 WSL。路由安装器保留无关配置，因此不会替旧环境清除这些残留。
+
+CLI 0.154.0 的本机配置审查还确认了两类旧字段：`features.js_repl` 已标记为 `removed`；stdio MCP 的 `type = "stdio"` 会被 `app-server --strict-config` 拒绝，使用 `command` 和 `args` 即可。遇到这些字段时，先核对本机 CLI 行为、备份配置，再只移除对应字段。不要把 `features.js_repl` 与桌面管理的 `mcp_servers.node_repl` 混为一谈。此类清理不属于路由安装器的自动修改范围。
+
+`projects.*.trust_level` 是信任记录，并非项目模型路由；桌面运行时路径、通知入口、浏览器状态及模型缓存由对应应用管理。路径或缓存版本变化需要核查引用和实际行为，不应为了精简指令而删除。TOML 能解析、路由校验通过，也不代表当前 CLI 识别全部字段或所有 MCP 都已连通。
 
 ## 6. 验收与回退
 

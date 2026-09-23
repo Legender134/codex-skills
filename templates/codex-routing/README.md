@@ -27,6 +27,21 @@ Maintain one reusable global policy per native environment, using its effective
 configuration or global AGENTS blocks. Necessary project-specific instructions,
 including those for non-code work, remain local to that project. Delegate by risk
 and complexity rather than file count, and reuse existing in-scope authorization.
+Keep these installation, inheritance and migration rules in this documentation;
+the always-loaded global AGENTS files contain operational guidance. When changing
+configuration, check effective overrides and newly loaded settings; editing a
+file alone does not prove an existing session uses it.
+
+`critical_reviewer` investigates a concrete high-risk correctness question. Its
+role retains training, CUDA and reconstruction checks, selected only when relevant
+to the changed behavior, and also covers other domains through their actual
+contracts. A change to gradient accumulation, kernel synchronization or transform
+composition can warrant deep review; a training log edit does not automatically
+do so. Authorization, concurrent writes or data migrations in other applications
+can warrant the same role. The primary chooses review depth from risk and missing
+evidence, rather than running `reviewer` and `critical_reviewer` as a pipeline.
+Project-specific frames, tolerances and acceptance criteria come from the task and
+project contracts, not from defaults invented by the global role.
 
 Scout covers deterministic source lookup and read-only supervision of authorized
 training, preprocessing, reconstruction, fusion/alignment, dataset preparation,
