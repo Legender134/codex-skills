@@ -2,6 +2,7 @@ import contextlib
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -61,6 +62,16 @@ def init_repo(workspace: Path, name: str) -> Path:
 
 
 class CliTests(unittest.TestCase):
+    def setUp(self) -> None:
+        # Exercise WSL-policy CLI dispatch on both hosts while transaction I/O
+        # remains native. Native target detection has separate integration tests.
+        for patcher in (
+            mock.patch("codex_routing.global_install._NATIVE_WINDOWS", False),
+            mock.patch("codex_routing.global_install._mount_targets", return_value=((Path(Path(tempfile.gettempdir()).anchor), "wsl"),)),
+        ):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
     def test_rollback_reports_failure_if_a_previously_restored_path_changes(self) -> None:
         for change in ("rewrite", "same-digest-rebind", "recreate"):
             with self.subTest(change=change), tempfile.TemporaryDirectory() as raw:
@@ -322,7 +333,12 @@ class CliTests(unittest.TestCase):
             source_root = self.copy_source(raw)
             scout = source_root / "templates" / "agents" / "scout.toml"
             scout.unlink()
-            scout.symlink_to(SOURCE_ROOT / "templates" / "agents" / "scout.toml")
+            try:
+                scout.symlink_to(SOURCE_ROOT / "templates" / "agents" / "scout.toml")
+            except OSError as exc:
+                if os.name == "nt" and getattr(exc, "winerror", None) == 1314:
+                    self.skipTest("Windows symlink privilege is unavailable")
+                raise
 
             with self.assertRaisesRegex(RoutingConfigError, "symlink|reparse"):
                 validate_source(source_root)
@@ -485,6 +501,6 @@ class CliTests(unittest.TestCase):
             ):
                 with self.assertRaisesRegex(
                     RoutingConfigError,
-                    f"unable to read rollback manifest: {manifest}",
+                    re.escape(f"unable to read rollback manifest: {manifest}"),
                 ):
                     plan_rollback(manifest)

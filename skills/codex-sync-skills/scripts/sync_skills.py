@@ -1,13 +1,23 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 import argparse
+import hashlib
 import json
 import os
 import re
+import stat
 import sys
+
+
+_symlink = os.symlink
+_GUARDED_LINK_CREATION = (
+    os.symlink in os.supports_dir_fd
+    and hasattr(os, "O_DIRECTORY")
+    and hasattr(os, "O_NOFOLLOW")
+)
 
 
 SAFE_NAME = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
@@ -31,12 +41,25 @@ class Roots:
 
 
 @dataclass(frozen=True)
+class SourceState:
+    directory: Path
+    directory_identity: tuple[int, int, int]
+    skill_file: Path
+    skill_identity: tuple[int, int, int, int, int, int]
+    skill_digest: str
+
+
+@dataclass(frozen=True)
 class Action:
     selector: str
     source: Path
     destination: Path
     status: str
     detail: str
+    source_root: Path | None = None
+    source_root_state: tuple[int, int, int] | None = None
+    destination_root_state: tuple[int, int, int] | None = None
+    source_state: SourceState | None = None
 
 
 def infer_default_roots(
@@ -74,11 +97,14 @@ def infer_default_roots(
 
 
 def _require_directory(root: Path, label: str) -> Path:
+    _reject_system_path(root.absolute())
     if not root.is_dir():
         raise ValueError(
             f"missing {label} root: {root}; create it before retrying"
         )
-    return root.resolve(strict=True)
+    resolved = root.resolve(strict=True)
+    _reject_system_path(resolved)
+    return resolved
 
 
 def _has_readable_skill(directory: Path) -> bool:
@@ -91,6 +117,29 @@ def _has_readable_skill(directory: Path) -> bool:
     except OSError:
         return False
     return True
+
+
+def _reject_system_path(path: Path) -> None:
+    if any(part.casefold() == ".system" for part in path.parts):
+        raise ValueError(f"path is inside excluded .system directory: {path}")
+
+
+def _validate_source_location(source: Path, source_root: Path) -> tuple[Path, Path]:
+    _reject_system_path(source_root)
+    excluded_roots = tuple(
+        child.resolve(strict=False) for child in source_root.iterdir()
+        if child.name.casefold() == ".system"
+    )
+    resolved_paths = (source.resolve(strict=True), (source / "SKILL.md").resolve(strict=True))
+    for resolved in resolved_paths:
+        _reject_system_path(resolved)
+        try:
+            resolved.relative_to(source_root)
+        except ValueError as exc:
+            raise ValueError("source escapes approved root") from exc
+        if any(resolved.is_relative_to(root) for root in excluded_roots):
+            raise ValueError("source resolves into excluded .system directory")
+    return resolved_paths
 
 
 def discover_candidates(
@@ -115,7 +164,7 @@ def discover_candidates(
 
         children = source_root.iterdir() if source_root is not None else ()
         for child in sorted(children, key=lambda item: item.name):
-            if child.name == ".system":
+            if child.name.casefold() == ".system":
                 continue
             try:
                 if not child.is_dir() or not (child / "SKILL.md").is_file():
@@ -131,13 +180,10 @@ def discover_candidates(
                 issues.append(f"REJECTED {selector}: unsafe skill name")
                 continue
 
-            resolved_child = child.resolve(strict=True)
             try:
-                resolved_child.relative_to(source_root)
-            except ValueError:
-                issues.append(
-                    f"REJECTED {selector}: source escapes approved root"
-                )
+                _validate_source_location(child, source_root)
+            except (OSError, RuntimeError, ValueError) as exc:
+                issues.append(f"REJECTED {selector}: {exc}")
                 continue
 
             if not _has_readable_skill(child):
@@ -148,7 +194,7 @@ def discover_candidates(
 
         # Destination-only broken links otherwise disappear from source discovery.
         for destination in sorted(destination_root.iterdir(), key=lambda item: item.name):
-            if destination.name == ".system" or not destination.is_symlink():
+            if destination.name.casefold() == ".system" or not destination.is_symlink():
                 continue
             if not _has_readable_skill(destination):
                 issues.append(
@@ -173,8 +219,9 @@ def _plan_action(selector: str, source: Path, destination: Path) -> Action:
         raw_target = Path(os.readlink(destination))
         target = raw_target if raw_target.is_absolute() else destination.parent / raw_target
         try:
+            _reject_system_path(target.absolute())
             matches_source = target.resolve(strict=False) == source.resolve(strict=False)
-        except (OSError, RuntimeError) as exc:
+        except (OSError, RuntimeError, ValueError) as exc:
             # Python < 3.13 raises RuntimeError for cycles even with strict=False.
             return Action(
                 selector,
@@ -184,6 +231,14 @@ def _plan_action(selector: str, source: Path, destination: Path) -> Action:
                 f"link target cannot be resolved: {exc}",
             )
         if matches_source:
+            expected_target = Path(os.path.abspath(source))
+            if not raw_target.is_absolute():
+                expected_target = Path(os.path.relpath(expected_target, destination.parent))
+            if raw_target != expected_target:
+                return Action(
+                    selector, source, destination, "CONFLICT",
+                    "link uses an unapproved source alias",
+                )
             return Action(
                 selector,
                 source,
@@ -211,10 +266,71 @@ def _plan_action(selector: str, source: Path, destination: Path) -> Action:
 def plan_actions(
     candidates: Mapping[str, tuple[Path, Path]],
 ) -> list[Action]:
-    return [
-        _plan_action(selector, *candidates[selector])
-        for selector in sorted(candidates)
-    ]
+    actions: list[Action] = []
+    for selector in sorted(candidates):
+        source, destination = candidates[selector]
+        try:
+            action = _plan_action(selector, source, destination)
+            actions.append(replace(
+                action,
+                source_root=source.parent,
+                source_root_state=_directory_identity(source.parent),
+                destination_root_state=_directory_identity(destination.parent),
+                source_state=_capture_source_state(source, source.parent),
+            ))
+        except (OSError, RuntimeError, ValueError) as exc:
+            actions.append(Action(selector, source, destination, "CONFLICT", str(exc)))
+    return actions
+
+
+def _directory_identity(path: Path) -> tuple[int, int, int]:
+    _reject_system_path(path.absolute())
+    _reject_system_path(path.resolve(strict=True))
+    state = path.lstat()
+    if not stat.S_ISDIR(state.st_mode) or getattr(state, "st_file_attributes", 0) & 0x400:
+        raise ValueError(f"reviewed root is not a regular directory: {path}")
+    return state.st_dev, state.st_ino, state.st_mode
+
+
+def _skill_identity(path: Path) -> tuple[int, int, int, int, int, int]:
+    state = path.lstat()
+    if not stat.S_ISREG(state.st_mode) or getattr(state, "st_file_attributes", 0) & 0x400:
+        raise ValueError(f"SKILL.md is not a regular file: {path}")
+    return (state.st_dev, state.st_ino, state.st_mode, state.st_size,
+            state.st_mtime_ns, state.st_ctime_ns)
+
+
+def _capture_source_state(source: Path, source_root: Path) -> SourceState:
+    directory, skill_file = _validate_source_location(source, source_root)
+    directory_state = _directory_identity(directory)
+    skill_state = _skill_identity(skill_file)
+    digest = hashlib.sha256(skill_file.read_bytes()).hexdigest()
+    if (
+        _directory_identity(directory) != directory_state
+        or _skill_identity(skill_file) != skill_state
+        or source.resolve(strict=True) != directory
+        or (source / "SKILL.md").resolve(strict=True) != skill_file
+    ):
+        raise ValueError("source changed while capturing its planned state")
+    return SourceState(directory, directory_state, skill_file, skill_state, digest)
+
+
+def _revalidate_action(action: Action) -> None:
+    if action.source_root is None or action.source_root_state is None or action.destination_root_state is None or action.source_state is None:
+        raise ValueError("action has no reviewed directory identities; preview again")
+    if _directory_identity(action.source_root) != action.source_root_state:
+        raise ValueError("Windows source root changed after planning")
+    if _directory_identity(action.destination.parent) != action.destination_root_state:
+        raise ValueError("WSL destination root changed after planning")
+    if _capture_source_state(action.source, action.source_root) != action.source_state:
+        raise ValueError("selected source or SKILL.md changed after planning; preview again")
+
+
+def _revalidate_link(action: Action) -> None:
+    _revalidate_action(action)
+    current = _plan_action(action.selector, action.source, action.destination)
+    if current.status != "UNCHANGED" or not _has_readable_skill(action.destination):
+        raise ValueError("destination no longer links to the expected readable source")
 
 
 def select_actions(
@@ -239,48 +355,55 @@ def select_actions(
     return [selected[key] for key in sorted(selected)]
 
 
+def _create_link(action: Action) -> None:
+    if not _GUARDED_LINK_CREATION:
+        raise ValueError("guarded link creation requires directory-relative symlink support; run from WSL")
+    directory_fd = os.open(
+        action.destination.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+    )
+    try:
+        state = os.fstat(directory_fd)
+        if (state.st_dev, state.st_ino, state.st_mode) != action.destination_root_state:
+            raise ValueError("WSL destination root changed before link creation")
+        _revalidate_action(action)
+        _symlink(
+            action.source, action.destination.name,
+            target_is_directory=True, dir_fd=directory_fd,
+        )
+    finally:
+        os.close(directory_fd)
+
+
 def apply_actions(actions: Sequence[Action]) -> tuple[list[Action], bool]:
     results: list[Action] = []
-    failed = False
-
     for action in actions:
-        if action.status == "CREATE":
-            try:
-                if not _has_readable_skill(action.source):
-                    raise OSError("source has no readable SKILL.md")
-                action.destination.symlink_to(
-                    action.source,
-                    target_is_directory=True,
-                )
-                if not _has_readable_skill(action.destination):
-                    raise OSError("created link has no readable SKILL.md")
-            except OSError as exc:
-                results.append(
-                    Action(
-                        action.selector,
-                        action.source,
-                        action.destination,
-                        "CONFLICT",
-                        f"link creation failed: {exc}",
-                    )
-                )
-                failed = True
-            else:
-                results.append(
-                    Action(
-                        action.selector,
-                        action.source,
-                        action.destination,
-                        "CREATED",
-                        "link created",
-                    )
-                )
-        else:
+        if action.status not in {"CREATE", "UNCHANGED"}:
             results.append(action)
-            if action.status == "CONFLICT":
-                failed = True
+            continue
+        try:
+            _revalidate_action(action)
+            current = _plan_action(action.selector, action.source, action.destination)
+            if current.status == "UNCHANGED":
+                _revalidate_link(action)
+                results.append(replace(action, status="UNCHANGED", detail=current.detail))
+            elif action.status == "CREATE" and current.status == "CREATE":
+                _create_link(action)
+                _revalidate_link(action)
+                results.append(replace(action, status="CREATED", detail="link created"))
+            else:
+                raise ValueError("destination changed after planning; preview again")
+        except (OSError, RuntimeError, ValueError) as exc:
+            results.append(replace(action, status="CONFLICT", detail=f"link validation or creation failed: {exc}"))
 
-    return results, failed
+    # A later action can expose changes to an earlier result. Report the state
+    # observed at closeout without deleting or repairing any conflicting link.
+    for index, action in enumerate(results):
+        if action.status in {"CREATED", "UNCHANGED"}:
+            try:
+                _revalidate_link(action)
+            except (OSError, RuntimeError, ValueError) as exc:
+                results[index] = replace(action, status="CONFLICT", detail=f"final link validation failed: {exc}")
+    return results, any(action.status == "CONFLICT" for action in results)
 
 
 class UsageParser(argparse.ArgumentParser):

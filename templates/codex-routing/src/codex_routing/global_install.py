@@ -8,7 +8,7 @@ import re
 import stat
 import tomllib
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from codex_routing.errors import RoutingConfigError
 from codex_routing.managed_files import (
@@ -49,6 +49,7 @@ _MOUNTINFO_ESCAPES = {
     "134": "\\",
 }
 _lstat = os.lstat
+_NATIVE_WINDOWS = os.name == "nt"
 
 
 @dataclass(frozen=True, repr=False)
@@ -279,7 +280,7 @@ def _resolve_home(home: Path) -> Path:
 
 
 def _classify_home_target(home: Path) -> PlatformName:
-    if os.name == "nt":
+    if _NATIVE_WINDOWS:
         drive = home.drive.casefold()
         if drive.startswith("\\\\?\\unc\\"):
             drive = "\\\\" + drive[len("\\\\?\\unc\\") :]
@@ -289,22 +290,33 @@ def _classify_home_target(home: Path) -> PlatformName:
                 f"{home}"
             )
         return "windows"
-    for mount_root in _windows_mount_roots():
+    matches: list[tuple[Path, PlatformName]] = []
+    for mount_root, target in _mount_targets():
         try:
             home.relative_to(mount_root)
         except ValueError:
             continue
-        return "windows"
-    return "wsl"
+        matches.append((mount_root, target))
+    if not matches:
+        raise RoutingConfigError(f"no mount covers codex home: {home}")
+    deepest = max(len(root.parts) for root, _ in matches)
+    targets = {target for root, target in matches if len(root.parts) == deepest}
+    if len(targets) != 1:
+        raise RoutingConfigError(f"codex home mount target is ambiguous: {home}")
+    return targets.pop()
 
 
 def _windows_mount_roots() -> tuple[Path, ...]:
+    return tuple(root for root, target in _mount_targets() if target == "windows")
+
+
+def _mount_targets() -> tuple[tuple[Path, PlatformName], ...]:
     try:
         mountinfo = Path("/proc/self/mountinfo").read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         raise RoutingConfigError("unable to inspect WSL mountinfo") from exc
 
-    roots: list[Path] = []
+    mounts: set[tuple[Path, PlatformName]] = set()
     records = 0
     for line in mountinfo.splitlines():
         if not line.strip():
@@ -326,7 +338,7 @@ def _windows_mount_roots() -> tuple[Path, ...]:
         records += 1
         root = _decode_mountinfo_path(fields[3])
         mountpoint = _decode_mountinfo_path(fields[4])
-        if not os.path.isabs(root) or not os.path.isabs(mountpoint):
+        if not PurePosixPath(root).is_absolute() or not PurePosixPath(mountpoint).is_absolute():
             raise RoutingConfigError("malformed WSL mountinfo")
         filesystem = fields[separator + 1]
         super_options = fields[separator + 3]
@@ -337,11 +349,10 @@ def _windows_mount_roots() -> tuple[Path, ...]:
                 and _has_drvfs_super_option(super_options)
             )
         )
-        if is_drvfs:
-            roots.append(Path(os.path.abspath(mountpoint)))
+        mounts.add((Path(mountpoint), "windows" if is_drvfs else "wsl"))
     if records == 0:
         raise RoutingConfigError("WSL mountinfo contains no recognizable records")
-    return tuple(sorted(set(roots), key=lambda path: len(os.fspath(path)), reverse=True))
+    return tuple(sorted(mounts, key=lambda item: (len(item[0].parts), os.fspath(item[0]), item[1]), reverse=True))
 
 
 def _decode_mountinfo_path(value: str) -> str:

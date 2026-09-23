@@ -457,20 +457,21 @@ class ManagedFilesTests(unittest.TestCase):
             self.assertFalse(stage.exists())
             self.assertEqual(list(root.rglob("*.tmp")), [collision])
 
-    def test_stage_replaced_during_write_is_never_adopted_or_published(self) -> None:
+    def test_stage_replaced_after_write_is_never_adopted_or_published(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)
             destination = root / "config.toml"
             destination.write_bytes(b"before\n")
             stage = root / ".config.toml.codex-routing-install-fixed.tmp"
-            module = __import__("codex_routing.managed_files", fromlist=["_write_fd"])
-            real_write = module._write_fd
+            module = __import__("codex_routing.managed_files", fromlist=["_assert_owned_payload"])
+            real_assert = module._assert_owned_payload
 
-            def replace_stage(fd: int, payload: bytes) -> None:
-                real_write(fd, payload)
-                if stage.exists():
-                    stage.unlink()
-                    stage.write_bytes(b"foreign-stage\n")
+            def replace_stage(owned, phase: str) -> None:
+                if owned.path == stage and phase == "write":
+                    foreign = root / "foreign.tmp"
+                    foreign.write_bytes(b"foreign-stage\n")
+                    foreign.replace(stage)
+                real_assert(owned, phase)
 
             with (
                 mock.patch(
@@ -478,7 +479,7 @@ class ManagedFilesTests(unittest.TestCase):
                     return_value=stage,
                 ),
                 mock.patch(
-                    "codex_routing.managed_files._write_fd",
+                    "codex_routing.managed_files._assert_owned_payload",
                     side_effect=replace_stage,
                 ),
             ):
@@ -490,27 +491,27 @@ class ManagedFilesTests(unittest.TestCase):
             self.assertEqual(destination.read_bytes(), b"before\n")
             self.assertEqual(stage.read_bytes(), b"foreign-stage\n")
 
-    def test_backup_replaced_during_write_is_never_adopted(self) -> None:
+    def test_backup_replaced_after_write_is_never_adopted(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)
             destination = root / "config.toml"
             destination.write_bytes(b"before\n")
             backup_root = root / "backups"
-            module = __import__("codex_routing.managed_files", fromlist=["_write_fd"])
-            real_write = module._write_fd
+            module = __import__("codex_routing.managed_files", fromlist=["_assert_owned_payload"])
+            real_assert = module._assert_owned_payload
             replacement: Path | None = None
 
-            def replace_backup(fd: int, payload: bytes) -> None:
+            def replace_backup(owned, phase: str) -> None:
                 nonlocal replacement
-                real_write(fd, payload)
-                candidates = list(backup_root.rglob("*.bak"))
-                if candidates and replacement is None:
-                    replacement = candidates[0]
-                    replacement.unlink()
-                    replacement.write_bytes(b"foreign-backup\n")
+                if phase == "write" and owned.path.suffix == ".bak" and replacement is None:
+                    replacement = owned.path
+                    foreign = root / "foreign.tmp"
+                    foreign.write_bytes(b"foreign-backup\n")
+                    foreign.replace(replacement)
+                real_assert(owned, phase)
 
             with mock.patch(
-                "codex_routing.managed_files._write_fd",
+                "codex_routing.managed_files._assert_owned_payload",
                 side_effect=replace_backup,
             ):
                 with self.assertRaisesRegex(RoutingConfigError, "changed during write"):
@@ -523,26 +524,26 @@ class ManagedFilesTests(unittest.TestCase):
             assert replacement is not None
             self.assertEqual(replacement.read_bytes(), b"foreign-backup\n")
 
-    def test_pending_manifest_replaced_during_write_is_never_adopted(self) -> None:
+    def test_pending_manifest_replaced_after_write_is_never_adopted(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)
             destination = root / "new.toml"
             backup_root = root / "backups"
-            module = __import__("codex_routing.managed_files", fromlist=["_write_fd"])
-            real_write = module._write_fd
+            module = __import__("codex_routing.managed_files", fromlist=["_assert_owned_payload"])
+            real_assert = module._assert_owned_payload
             replacement: Path | None = None
 
-            def replace_pending_manifest(fd: int, payload: bytes) -> None:
+            def replace_pending_manifest(owned, phase: str) -> None:
                 nonlocal replacement
-                real_write(fd, payload)
-                candidates = list(backup_root.rglob("manifest.pending.json"))
-                if candidates and replacement is None:
-                    replacement = candidates[0]
-                    replacement.unlink()
-                    replacement.write_bytes(b"foreign-manifest\n")
+                if phase == "write" and owned.path.name == "manifest.pending.json" and replacement is None:
+                    replacement = owned.path
+                    foreign = root / "foreign.tmp"
+                    foreign.write_bytes(b"foreign-manifest\n")
+                    foreign.replace(replacement)
+                real_assert(owned, phase)
 
             with mock.patch(
-                "codex_routing.managed_files._write_fd",
+                "codex_routing.managed_files._assert_owned_payload",
                 side_effect=replace_pending_manifest,
             ):
                 with self.assertRaisesRegex(RoutingConfigError, "changed during write"):
@@ -561,7 +562,12 @@ class ManagedFilesTests(unittest.TestCase):
             target = root / "target.toml"
             target.write_bytes(b"target\n")
             destination = root / "config.toml"
-            destination.symlink_to(target)
+            try:
+                destination.symlink_to(target)
+            except OSError as exc:
+                if os.name == "nt" and getattr(exc, "winerror", None) == 1314:
+                    self.skipTest("Windows symlink privilege is unavailable")
+                raise
 
             with self.assertRaisesRegex(RoutingConfigError, "symlink|reparse"):
                 apply_transaction(
@@ -708,6 +714,7 @@ class ManagedFilesTests(unittest.TestCase):
             self.assertEqual(destination.read_bytes(), b"before\n")
             self.assert_no_temporary_files(root)
 
+    @unittest.skipIf(os.name == "nt", "directory fsync is POSIX-specific")
     def test_directory_fsync_propagates_permission_errors_on_posix(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             module = __import__(
@@ -720,6 +727,7 @@ class ManagedFilesTests(unittest.TestCase):
                 with self.assertRaises(PermissionError):
                     module._fsync_directory(Path(raw))
 
+    @unittest.skipIf(os.name == "nt", "directory fsync is POSIX-specific")
     def test_directory_fsync_ignores_only_unsupported_posix_fsync(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             module = __import__(
@@ -885,6 +893,7 @@ class ManagedFilesTests(unittest.TestCase):
             self.assertEqual(destination.read_bytes(), b"foreign\n")
             self.assert_no_temporary_files(root)
 
+    @unittest.skipIf(os.name == "nt", "directory permission identity is POSIX-specific")
     def test_parent_change_before_publish_is_refused(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)

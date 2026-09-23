@@ -62,7 +62,7 @@ class ReadmeSafetyTests(unittest.TestCase):
         matches = [
             block
             for _, _, block in bash_blocks(body)
-            if 'CONFLICT="$TARGET_CODEX_HOME/agents/$ROLE.toml"' in block
+            if 'CONFLICT="$AGENTS_DIR/$ROLE.toml"' in block
         ]
         self.assertEqual(len(matches), 1)
         return matches[0]
@@ -70,6 +70,8 @@ class ReadmeSafetyTests(unittest.TestCase):
     def run_conflict_recipe(
         self, codex_home: Path, *, path: str | None = None
     ) -> subprocess.CompletedProcess:
+        if os.name == "nt":
+            self.skipTest("the documented Bash recipe runs inside WSL")
         environment = os.environ.copy()
         environment.update(
             {
@@ -133,6 +135,7 @@ class ReadmeSafetyTests(unittest.TestCase):
         self.assertIn("mv --no-clobber", recipe)
         self.assertNotIn("-m codex_routing", recipe)
 
+    @unittest.skipIf(os.name == "nt", "the documented Bash recipe runs inside WSL")
     def test_conflict_recipe_preserves_regular_foreign_bytes(self) -> None:
         foreign = b"foreign role bytes\n"
         with tempfile.TemporaryDirectory() as raw:
@@ -150,6 +153,7 @@ class ReadmeSafetyTests(unittest.TestCase):
             self.assertTrue(archive.is_file())
             self.assertEqual(archive.read_bytes(), foreign)
 
+    @unittest.skipIf(os.name == "nt", "the documented Bash recipe runs inside WSL")
     def test_conflict_recipe_stops_before_move_when_digest_command_fails(
         self,
     ) -> None:
@@ -177,6 +181,7 @@ class ReadmeSafetyTests(unittest.TestCase):
             self.assertFalse(archive.exists())
             self.assertFalse(archive.is_symlink())
 
+    @unittest.skipIf(os.name == "nt", "the documented Bash recipe runs inside WSL")
     def test_conflict_recipe_refuses_an_existing_archive_without_changes(self) -> None:
         foreign = b"foreign role bytes\n"
         archived = b"existing archive bytes\n"
@@ -197,6 +202,7 @@ class ReadmeSafetyTests(unittest.TestCase):
             self.assertEqual(conflict.read_bytes(), foreign)
             self.assertEqual(archive.read_bytes(), archived)
 
+    @unittest.skipIf(os.name == "nt", "the documented Bash recipe runs inside WSL")
     def test_conflict_recipe_refuses_linked_or_non_directory_paths(self) -> None:
         foreign = b"foreign role bytes\n"
         cases = (
@@ -204,6 +210,7 @@ class ReadmeSafetyTests(unittest.TestCase):
             "directory-conflict",
             "linked-archive-directory",
             "file-archive-directory",
+            "linked-agents-directory",
         )
         for case in cases:
             with self.subTest(case=case), tempfile.TemporaryDirectory() as raw:
@@ -215,7 +222,11 @@ class ReadmeSafetyTests(unittest.TestCase):
                 archive_dir = codex_home / "routing-conflicts"
                 external = root / "external"
 
-                if case == "linked-conflict":
+                if case == "linked-agents-directory":
+                    conflict.write_bytes(foreign)
+                    agents.rename(external)
+                    agents.symlink_to(external, target_is_directory=True)
+                elif case == "linked-conflict":
                     external.write_bytes(foreign)
                     try:
                         conflict.symlink_to(external)
@@ -237,7 +248,11 @@ class ReadmeSafetyTests(unittest.TestCase):
                 result = self.run_conflict_recipe(codex_home)
 
                 self.assertNotEqual(result.returncode, 0)
-                if case == "linked-conflict":
+                if case == "linked-agents-directory":
+                    self.assertTrue(agents.is_symlink())
+                    self.assertEqual((external / "scout.toml").read_bytes(), foreign)
+                    self.assertFalse(archive_dir.exists())
+                elif case == "linked-conflict":
                     self.assertTrue(conflict.is_symlink())
                     self.assertEqual(external.read_bytes(), foreign)
                     self.assertFalse(archive_dir.exists())

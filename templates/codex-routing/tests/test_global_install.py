@@ -10,6 +10,7 @@ from unittest import mock
 from codex_routing.errors import RoutingConfigError
 from codex_routing.global_install import (
     _classify_home_target,
+    _mount_targets,
     _windows_mount_roots,
     install_global,
     plan_global_install,
@@ -27,12 +28,26 @@ ROLE_NAMES = ("scout", "explorer", "worker", "reviewer", "routine_worker", "crit
 
 
 class NativeWindowsTargetTests(unittest.TestCase):
+    @unittest.skipUnless(os.name == "nt", "requires native Windows filesystem operations")
+    def test_native_windows_install_validate_noop_and_rollback(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            home = Path(raw)
+            original = b'[mcp_servers.keep]\ncommand = "keep"\n'
+            (home / "config.toml").write_bytes(original)
+            result = install_global(home, "windows", SOURCE_ROOT, apply=True)
+            self.assertTrue(validate_global_install(home, "windows", SOURCE_ROOT).valid)
+            self.assertEqual(plan_global_install(home, "windows", SOURCE_ROOT).updates, ())
+            self.assertIsNone(install_global(home, "windows", SOURCE_ROOT, apply=True).manifest_path)
+            rollback_transaction(result.manifest_path)
+            self.assertEqual((home / "config.toml").read_bytes(), original)
+            self.assertFalse((home / "AGENTS.md").exists())
+
     def test_rejects_wsl_unc_aliases_and_extended_paths(self) -> None:
         for host in ("wsl$", "wsl.localhost", "WSL.LOCALHOST"):
             for prefix in ("\\\\", "\\\\?\\UNC\\"):
                 path = PureWindowsPath(prefix + host + r"\Ubuntu\home\user\.codex")
                 with self.subTest(path=str(path)), mock.patch(
-                    "codex_routing.global_install.os.name", "nt"
+                    "codex_routing.global_install._NATIVE_WINDOWS", True
                 ):
                     with self.assertRaisesRegex(RoutingConfigError, "inside WSL"):
                         _classify_home_target(path)
@@ -46,17 +61,64 @@ class NativeWindowsTargetTests(unittest.TestCase):
             r"\\wsl.localhost.example\homes\user\.codex",
         ):
             with self.subTest(path=path), mock.patch(
-                "codex_routing.global_install.os.name", "nt"
+                "codex_routing.global_install._NATIVE_WINDOWS", True
             ):
                 self.assertEqual(_classify_home_target(PureWindowsPath(path)), "windows")
+
+
+class NestedMountTests(unittest.TestCase):
+    def test_deepest_mount_controls_target_even_below_another_platform(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            drive = root / "drive"
+            linux = drive / "linux"
+            nested_drive = linux / "drive"
+            mounts = ((root, "wsl"), (drive, "windows"), (linux, "wsl"), (nested_drive, "windows"))
+            with mock.patch("codex_routing.global_install._NATIVE_WINDOWS", False), mock.patch(
+                "codex_routing.global_install._mount_targets", return_value=mounts
+            ):
+                for parent, expected in mounts:
+                    home = parent / ".codex"
+                    home.mkdir(parents=True)
+                    with self.subTest(expected=expected, home=home):
+                        self.assertEqual(plan_global_install(home, expected, SOURCE_ROOT).platform, expected)
+                        other = "wsl" if expected == "windows" else "windows"
+                        for call in (plan_global_install, install_global, validate_global_install):
+                            with self.assertRaisesRegex(RoutingConfigError, "does not match"):
+                                call(home, other, SOURCE_ROOT)
+                        self.assertEqual(list(home.iterdir()), [])
+
+    def test_overlapping_mounts_with_conflicting_targets_fail_closed(self) -> None:
+        home = Path.cwd()
+        with mock.patch("codex_routing.global_install._NATIVE_WINDOWS", False), mock.patch(
+            "codex_routing.global_install._mount_targets", return_value=((home, "wsl"), (home, "windows"))
+        ):
+            with self.assertRaisesRegex(RoutingConfigError, "ambiguous"):
+                _classify_home_target(home)
+
+    def test_mount_parser_keeps_linux_submounts(self) -> None:
+        text = (
+            "42 1 0:1 / / rw - ext4 /dev/root rw\n"
+            "132 42 0:70 / /mnt/c rw - 9p none rw,aname=drvfs\n"
+            "133 132 0:1 / /mnt/c/linux rw - ext4 /dev/root rw\n"
+        )
+        with mock.patch("codex_routing.global_install.Path.read_text", return_value=text):
+            self.assertEqual(_mount_targets(), (
+                (Path("/mnt/c/linux"), "wsl"), (Path("/mnt/c"), "windows"), (Path("/"), "wsl"),
+            ))
 
 
 class GlobalInstallTests(unittest.TestCase):
     def setUp(self) -> None:
         self.windows_mount_roots: list[Path] = []
+        host = mock.patch("codex_routing.global_install._NATIVE_WINDOWS", False)
+        host.start()
+        self.addCleanup(host.stop)
         patcher = mock.patch(
-            "codex_routing.global_install._windows_mount_roots",
-            side_effect=lambda: tuple(self.windows_mount_roots),
+            "codex_routing.global_install._mount_targets",
+            side_effect=lambda: ((Path(Path(tempfile.gettempdir()).anchor), "wsl"),) + tuple(
+                (root, "windows") for root in self.windows_mount_roots
+            ),
             create=True,
         )
         patcher.start()
@@ -125,6 +187,7 @@ class GlobalInstallTests(unittest.TestCase):
 
             self.assertEqual(list(home.iterdir()), [])
 
+    @mock.patch("codex_routing.global_install._mount_targets", new=_mount_targets)
     def test_windows_mount_reader_detects_drvfs_without_fixed_mount_path(self) -> None:
         mountinfo = (
             "132 82 0:70 / /temporary/windows-home rw - 9p none "
@@ -141,6 +204,7 @@ class GlobalInstallTests(unittest.TestCase):
 
         self.assertEqual(roots, (Path("/temporary/windows-home"),))
 
+    @mock.patch("codex_routing.global_install._mount_targets", new=_mount_targets)
     def test_windows_mount_reader_accepts_a_valid_native_wsl_table(self) -> None:
         mountinfo = "42 1 0:1 / / rw - ext4 /dev/root rw\n"
 
@@ -151,6 +215,7 @@ class GlobalInstallTests(unittest.TestCase):
 
         self.assertEqual(roots, ())
 
+    @mock.patch("codex_routing.global_install._mount_targets", new=_mount_targets)
     def test_windows_mount_reader_refuses_unreadable_or_invalid_utf8_evidence(
         self,
     ) -> None:
@@ -165,6 +230,7 @@ class GlobalInstallTests(unittest.TestCase):
                 with self.assertRaisesRegex(RoutingConfigError, "mountinfo"):
                     _windows_mount_roots()
 
+    @mock.patch("codex_routing.global_install._mount_targets", new=_mount_targets)
     def test_windows_mount_reader_refuses_malformed_mountinfo(self) -> None:
         mountinfos = (
             "malformed mountinfo record\n",
@@ -200,8 +266,8 @@ class GlobalInstallTests(unittest.TestCase):
             )
             with (
                 mock.patch(
-                    "codex_routing.global_install._windows_mount_roots",
-                    wraps=_windows_mount_roots,
+                    "codex_routing.global_install._mount_targets",
+                    wraps=_mount_targets,
                 ),
                 mock.patch(
                     "codex_routing.global_install.Path.read_text",
@@ -214,6 +280,7 @@ class GlobalInstallTests(unittest.TestCase):
 
             self.assertEqual(list(home.iterdir()), [])
 
+    @mock.patch("codex_routing.global_install._mount_targets", new=_mount_targets)
     def test_windows_mount_reader_refuses_no_recognizable_mountinfo_records(
         self,
     ) -> None:
@@ -234,7 +301,7 @@ class GlobalInstallTests(unittest.TestCase):
                 lambda: validate_global_install(home, "wsl", SOURCE_ROOT),
             )
             with mock.patch(
-                "codex_routing.global_install._windows_mount_roots",
+                "codex_routing.global_install._mount_targets",
                 side_effect=RoutingConfigError("mountinfo unavailable"),
             ):
                 for call in calls:
@@ -243,6 +310,7 @@ class GlobalInstallTests(unittest.TestCase):
 
             self.assertEqual(list(home.iterdir()), [])
 
+    @mock.patch("codex_routing.global_install._mount_targets", new=_mount_targets)
     def test_windows_mount_reader_accepts_a_c_only_wsl_layout(self) -> None:
         mountinfo = (
             "42 1 0:1 / / rw - ext4 /dev/root rw\n"
@@ -726,7 +794,12 @@ class GlobalInstallTests(unittest.TestCase):
             home = self.make_home(raw, target="windows")
             target = root / "target.toml"
             target.write_bytes(b"foreign target\n")
-            (home / "config.toml").symlink_to(target)
+            try:
+                (home / "config.toml").symlink_to(target)
+            except OSError as exc:
+                if os.name == "nt" and getattr(exc, "winerror", None) == 1314:
+                    self.skipTest("Windows symlink privilege is unavailable")
+                raise
 
             with self.assertRaisesRegex(RoutingConfigError, "symlink"):
                 plan_global_install(home, "windows", SOURCE_ROOT)
@@ -851,7 +924,7 @@ class GlobalInstallTests(unittest.TestCase):
                 (
                     "float for integer",
                     "max_concurrent_threads_per_session = 2",
-                    "max_concurrent_threads_per_session = 1.0",
+                    "max_concurrent_threads_per_session = 2.0",
                 ),
             ):
                 with self.subTest(impostor=label):

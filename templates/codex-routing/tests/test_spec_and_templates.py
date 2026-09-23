@@ -1,4 +1,5 @@
 import tomllib
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -86,11 +87,16 @@ class PolicyTemplateTests(unittest.TestCase):
             templates = source_root / "templates"
             templates.mkdir()
             (templates / "safe.txt").write_bytes(b"exact bytes")
-            (templates / "link.txt").symlink_to(templates / "safe.txt")
 
             self.assertEqual(load_template(source_root, "safe.txt"), b"exact bytes")
             for path in ("../safe.txt", "/etc/passwd", "C:\\safe.txt"):
                 with self.assertRaises(RoutingConfigError):
                     load_template(source_root, path)
+            try:
+                (templates / "link.txt").symlink_to(templates / "safe.txt")
+            except OSError as exc:
+                if os.name == "nt" and getattr(exc, "winerror", None) == 1314:
+                    self.skipTest("Windows symlink privilege is unavailable")
+                raise
             with self.assertRaises(RoutingConfigError):
                 load_template(source_root, "link.txt")

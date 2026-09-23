@@ -90,6 +90,14 @@ Windows-native execution rejects WSL homes reached through `\\wsl$` or
 
 ## Plan, apply and validate
 
+Keep managed files, their parent directories, and transaction backup evidence
+stable and free of other writers throughout installation, rollback, and conflict
+preservation. Unrelated Codex session and cache activity may continue. Identity and digest
+checks detect changes at checkpoints; they are not an atomic compare-and-swap with
+the following replace or unlink, and the tool does not enforce an exclusive lock.
+An edit in that final interval can still be overwritten or removed. Defer the
+operation if exclusive access cannot be arranged.
+
 ```bash
 "$ROUTING_PYTHON" -m codex_routing install-global \
   --target wsl --codex-home "$WSL_CODEX_HOME" --source-root "$PWD"
@@ -150,8 +158,8 @@ no backup or manifest. Preview the relevant transaction before rollback:
 
 Rollback accepts only a `files/<filename>` backup path within its transaction;
 Windows separators, drive-qualified paths and alternate data streams are rejected
-on every host. It checks installed digests before restoring prior bytes; subsequent
-edits are not overwritten. Historical project manifests remain supported by the generic
+on every host. It checks installed digests before restoring prior bytes and refuses
+edits detected by those checks. Historical project manifests remain supported by the generic
 rollback engine, but must be reviewed before use because they can restore obsolete
 project overrides. This package does not automatically clean backups or projects.
 
@@ -183,10 +191,16 @@ export ROLE=scout
     printf '%s\n' 'error: unsupported role' >&2
     exit 2
   ;; esac
-  CONFLICT="$TARGET_CODEX_HOME/agents/$ROLE.toml"
+  AGENTS_DIR="$TARGET_CODEX_HOME/agents"
+  CONFLICT="$AGENTS_DIR/$ROLE.toml"
   ARCHIVE_DIR="$TARGET_CODEX_HOME/routing-conflicts"
   ARCHIVE="$ARCHIVE_DIR/$ROLE.toml.before-routing"
 
+  if [ -L "$TARGET_CODEX_HOME" ] || [ ! -d "$TARGET_CODEX_HOME" ] ||
+     [ -L "$AGENTS_DIR" ] || [ ! -d "$AGENTS_DIR" ]; then
+    printf '%s\n' 'error: Codex home and agents must be non-linked directories' >&2
+    exit 2
+  fi
   if [ -L "$CONFLICT" ] || [ ! -f "$CONFLICT" ]; then
     printf '%s\n' 'error: conflict must be a non-linked regular file' >&2
     exit 2
@@ -267,6 +281,17 @@ PYTHONPATH=src python3 -m unittest discover -s tests -v
 PYTHONPATH=src python3 -m codex_routing check-source --source-root "$PWD"
 git diff --check
 ```
+
+Also run the routing suite with native Windows Python from this directory:
+
+```powershell
+$env:PYTHONPATH = Join-Path (Get-Location) 'src'
+python -X utf8 -m unittest discover -s tests -v
+```
+
+Tests require Git on PATH. POSIX-only checks and the Bash preservation recipe run
+inside WSL; the native Windows installation round-trip runs on Windows. Tests
+requiring unavailable Windows symlink privileges report an explicit skip.
 
 Exit codes: 0 success; 1 invalid installed global state; 2 argument/domain errors
 (including unsupported commands). Unexpected errors propagate.
