@@ -22,6 +22,12 @@ Use only supported GPT-6 routes; never fall back to GPT-5.6. Model availability 
 actual effort are verified at runtime, not inferred from a configuration file.
 Do not switch provider/login/billing or enable Fast to work around usage limits.
 
+Maintain one reusable global policy per native environment, using its effective
+`CODEX_HOME` (default `~/.codex`). Coding projects inherit it without copied routing
+configuration or global AGENTS blocks. Necessary project-specific instructions,
+including those for non-code work, remain local to that project. Delegate by risk
+and complexity rather than file count, and reuse existing in-scope authorization.
+
 Scout covers deterministic source lookup and read-only supervision of authorized
 training, preprocessing, reconstruction, fusion/alignment, dataset preparation,
 evaluation, rendering/export, builds and tests. Give exact job identities, allowed
@@ -29,6 +35,12 @@ paths/commands, cadence and completion criteria. It reports timestamped progress
 freshness, metrics, checkpoints, resources, exit status and anomalies. It cannot
 start/stop/retry/reconfigure jobs, alter data/code, or grant final acceptance.
 An ended turn must hand off pending checks, not claim background monitoring.
+Agree on heartbeat and maximum silence intervals. The primary checks for lost
+coverage and resumes read-only monitoring when needed, without duplicate routine
+polling while scout coverage is healthy.
+
+Before publication, review both the task-baseline diff and everything the target
+remote would receive, including earlier unpushed commits and the actual PR/MR diff.
 
 ## Prepare the environment
 
@@ -76,9 +88,9 @@ config into this repository.
 
 ## Global-only migration
 
-`install-egs` and `validate-egs` are retired and return exit code 2 without reading
-or modifying project contents, even with `--apply`. The old project installer and
-templates are no longer shipped. Existing project overrides are **not** silently
+Legacy project installation and validation commands are retired and return exit
+code 2 without reading or modifying project contents, even with `--apply`. The old
+project installer and templates are no longer shipped. Existing project overrides are **not** silently
 removed. Inspect each relevant worktree and merge/remove only explicitly identified
 routing keys after preserving original bytes. Keep domain AGENTS rules, hooks,
 skills, state and all unrelated configuration.

@@ -28,8 +28,8 @@ _ROLE_NAMES = ("scout", "explorer", "worker", "reviewer", "routine_worker", "cri
 # than trusting a caller-supplied source root. Update them only with an approved
 # template change.
 _GLOBAL_TEMPLATE_DIGESTS: dict[PlatformName, str] = {
-    "windows": "277cf49f395b800bfe94368d32a7863d12a32cc535bb7b8671035537740a6eae",
-    "wsl": "6ec1d376ff5606f89fe69b1aeea13d4f8f6f32f88c013ba697c2ab4a2c4c9b98",
+    "windows": "b673ed8225d9bdc0e01071c4dafa30831cf61a8656c64aaf679e5d13a6da7c46",
+    "wsl": "a276ff23a3f914d9535428ab3acab5d8b4b42eda20e17b628ee6ac8c93998a74",
 }
 _ROLE_TEMPLATE_DIGESTS: dict[str, str] = {
     "routine_worker": "3ca445b06ec2d29e0fa0d7af9fe96eeb23ac306993d55539f95756b8ee7b6e71",

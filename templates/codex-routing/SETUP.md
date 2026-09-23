@@ -65,8 +65,9 @@ python3 -m venv "$HOME/.local/share/codex-skill-runtimes/hatch-pet"
 
 项目级配置和更深层指令可能覆盖全局设置；项目配置是否加载还受信任状态影响。全局更新不代表所有项目覆盖都被删除。
 
-- `install-egs`、`validate-egs` 已停用，返回错误且不读写项目；只使用全局路由安装入口。
-- 其他项目逐个检查 `.codex/config.toml`、`.codex/agents/` 及适用的 `AGENTS.md`。项目继承全局路由，只保留业务规则及与路由无关的 hooks、skills、state；旧覆盖需单独审查和备份后处理。
+- 旧项目专用安装、校验入口已停用，返回错误且不读写项目；只使用全局路由安装入口。
+- 普通代码项目直接继承全局配置，不新建项目路由配置，也不复制全局 AGENTS 规则。必要的项目领域约束留在项目内；非代码项目的专属要求同样不搬进全局文件。
+- 逐个检查 `.codex/config.toml`、`.codex/agents/` 及适用的 `AGENTS.md`。保留业务规则及与路由无关的 hooks、skills、state；旧覆盖需单独审查和备份后处理。
 - 用 `git worktree list --porcelain` 盘点工作树。每个工作树有自己的目录上下文，可能含独立本地覆盖；从各目录验证有效配置，不能只检查主工作树。
 - 项目模板也应继承全局路由；具体领域的任务要求作为业务说明传给全局角色，不另维护模型表。
 

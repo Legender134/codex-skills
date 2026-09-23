@@ -21,8 +21,8 @@ _EXPECTED_TEMPLATE_DIGESTS: dict[str, str] = {
     "agents/reviewer.toml": "25bc68ee68b310ade6318c9c4f9f8df693f160eba03c8cef2b2a2d71377eb751",
     "agents/scout.toml": "956e026b01bac79abd7b854ca81acb7c7222d25b4ee6ca9a76336cbee297c98e",
     "agents/worker.toml": "3bb2030b40c09e6cc2fd1c3c516b9cc315cedcbc8a432d732cf070d9e6cbd92d",
-    "global/windows-AGENTS.md": "277cf49f395b800bfe94368d32a7863d12a32cc535bb7b8671035537740a6eae",
-    "global/wsl-AGENTS.md": "6ec1d376ff5606f89fe69b1aeea13d4f8f6f32f88c013ba697c2ab4a2c4c9b98",
+    "global/windows-AGENTS.md": "b673ed8225d9bdc0e01071c4dafa30831cf61a8656c64aaf679e5d13a6da7c46",
+    "global/wsl-AGENTS.md": "a276ff23a3f914d9535428ab3acab5d8b4b42eda20e17b628ee6ac8c93998a74",
 }
 _EXPECTED_DIRECTORIES = {"", "agents", "global"}
 
