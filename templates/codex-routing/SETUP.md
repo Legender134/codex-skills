@@ -23,6 +23,8 @@
 
 从仓库根目录进入 `templates/codex-routing`，按 [README](README.md#prepare-the-environment) 设置 Python、Windows Codex home 和 WSL Codex home，然后执行源校验及所选目标的预览。安装器需要 Python 3.11+；从 WSL 操作两个目标时，Windows 路径通过 `powershell.exe` 和 `wslpath` 解析。自定义 Windows `CODEX_HOME` 应明确覆盖 `WINDOWS_CODEX_HOME`，不要默认它位于用户目录。
 
+Windows 原生入口拒绝通过 `\\wsl$`、`\\wsl.localhost` 或其扩展 UNC 形式操作 WSL Codex home；这类目标请进入对应 WSL 发行版后使用 Linux 路径管理。
+
 ```bash
 cd templates/codex-routing
 export PYTHONPATH="$PWD/src"

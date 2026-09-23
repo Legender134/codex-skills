@@ -280,6 +280,14 @@ def _resolve_home(home: Path) -> Path:
 
 def _classify_home_target(home: Path) -> PlatformName:
     if os.name == "nt":
+        drive = home.drive.casefold()
+        if drive.startswith("\\\\?\\unc\\"):
+            drive = "\\\\" + drive[len("\\\\?\\unc\\") :]
+        if drive.startswith(("\\\\wsl$\\", "\\\\wsl.localhost\\")):
+            raise RoutingConfigError(
+                "WSL UNC Codex homes must be managed from inside WSL: "
+                f"{home}"
+            )
         return "windows"
     for mount_root in _windows_mount_roots():
         try:

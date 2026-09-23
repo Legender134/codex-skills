@@ -71,6 +71,8 @@ export WSL_CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 For a Windows target, resolve its exact Codex home explicitly; do not assume the
 WSL home is shared. Windows native tooling and login stay separate. See
 [SETUP.md](SETUP.md) for skills and environment boundaries.
+Windows-native execution rejects WSL homes reached through `\\wsl$` or
+`\\wsl.localhost`, including extended UNC paths; manage those homes inside WSL.
 
 ## Plan, apply and validate
 

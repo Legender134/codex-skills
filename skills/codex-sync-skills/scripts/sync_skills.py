@@ -172,7 +172,18 @@ def _plan_action(selector: str, source: Path, destination: Path) -> Action:
     if destination.is_symlink():
         raw_target = Path(os.readlink(destination))
         target = raw_target if raw_target.is_absolute() else destination.parent / raw_target
-        if target.resolve(strict=False) == source.resolve(strict=False):
+        try:
+            matches_source = target.resolve(strict=False) == source.resolve(strict=False)
+        except (OSError, RuntimeError) as exc:
+            # Python < 3.13 raises RuntimeError for cycles even with strict=False.
+            return Action(
+                selector,
+                source,
+                destination,
+                "CONFLICT",
+                f"link target cannot be resolved: {exc}",
+            )
+        if matches_source:
             return Action(
                 selector,
                 source,

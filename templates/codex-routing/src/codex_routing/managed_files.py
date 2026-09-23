@@ -373,7 +373,9 @@ def rollback_transaction(
                     )
             for record in reversed(restored):
                 try:
-                    _reinstall_after_failed_rollback(record, replace)
+                    _reinstall_after_failed_rollback(
+                        record, prepared.get(record.path), replace
+                    )
                 except Exception as compensation_exc:
                     compensation_errors.append(
                         f"{record.path}: {_exception_text(compensation_exc)}"
@@ -936,26 +938,30 @@ def _rollback_result_was_published(
 
 
 def _reinstall_after_failed_rollback(
-    record: _RollbackRecord, replace: Callable[[Path, Path], None]
+    record: _RollbackRecord,
+    restored_stage: _OwnedStage | None,
+    replace: Callable[[Path, Path], None],
 ) -> None:
-    parent = _capture_parent(record.path.parent)
-    if _stat_identity(parent) != record.parent_state:
-        raise RoutingConfigError("parent identity no longer matches")
     if record.prior_exists:
-        current = _capture_regular_file(record.path, "rolled-back destination")
-        assert record.prior_digest is not None
-        if _digest(_read_captured_regular(record.path, current)) != record.prior_digest:
-            raise RoutingConfigError("prior digest no longer matches")
-    else:
-        try:
-            _lstat(record.path)
-        except FileNotFoundError:
-            pass
-        else:
-            raise RoutingConfigError("removed destination was recreated")
+        assert restored_stage is not None
+    restored = _CapturedUpdate(
+        path=record.path,
+        after=record.installed,
+        installed_digest=record.installed_digest,
+        parent_state=record.parent_state,
+        prior_state=restored_stage.state if record.prior_exists else None,
+        prior=record.prior,
+        prior_digest=record.prior_digest,
+    )
+    # Keep the identity of our published rollback stage across compensation of
+    # other records; identical bytes do not establish ownership of a replacement.
+    _revalidate_updates((restored,))
     stage = _prepare_stage(record.path, record.installed, "compensate")
     try:
         _assert_owned_payload(stage, "publication")
+        # Staging may overlap another writer. Protect both restored files and
+        # removed destinations, including a changed parent or file identity.
+        _revalidate_updates((restored,))
         replace(stage.path, record.path)
         _assert_published(stage, record.path)
         _fsync_directory(record.path.parent)

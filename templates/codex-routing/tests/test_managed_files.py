@@ -1,6 +1,7 @@
 import errno
 import hashlib
 import json
+import os
 import stat
 import tempfile
 import unittest
@@ -876,6 +877,131 @@ class ManagedFilesTests(unittest.TestCase):
                 )
 
             self.assertEqual(destination.read_bytes(), b"installed\n")
+            self.assert_no_temporary_files(root)
+
+    def test_rollback_compensation_preserves_concurrent_destination_changes(self) -> None:
+        cases = ((True, "rewrite"), (False, "recreate"), (True, "replace"))
+        for prior_exists, change in cases:
+            with self.subTest(change=change), tempfile.TemporaryDirectory() as raw:
+                root = Path(raw)
+                first, second = root / "a.toml", root / "b.toml"
+                if prior_exists:
+                    first.write_bytes(b"before-a")
+                second.write_bytes(b"before-b")
+                result = apply_transaction(
+                    (FileUpdate(first, b"installed-a"), FileUpdate(second, b"installed-b")),
+                    root / "backups",
+                )
+                module = __import__("codex_routing.managed_files", fromlist=["_prepare_stage"])
+                real_prepare = module._prepare_stage
+                foreign = b"before-a" if change == "replace" else b"concurrent-edit"
+                foreign_state = None
+
+                def race_after_staging(path: Path, payload: bytes, purpose: str):
+                    nonlocal foreign_state
+                    stage = real_prepare(path, payload, purpose)
+                    if path == first and purpose == "compensate":
+                        if change == "replace":
+                            replacement = root / "foreign.toml"
+                            replacement.write_bytes(foreign)
+                            replacement.replace(first)
+                        else:
+                            first.write_bytes(foreign)
+                        foreign_state = module._stat_identity(first.stat())
+                    return stage
+
+                def fail_second_restore(source: Path, destination: Path) -> None:
+                    if destination == second and "rollback" in source.name:
+                        raise OSError("injected second rollback failure")
+                    source.replace(destination)
+
+                with mock.patch.object(module, "_prepare_stage", side_effect=race_after_staging):
+                    with self.assertRaises(RoutingConfigError) as caught:
+                        rollback_transaction(result.manifest_path, replace=fail_second_restore)
+
+                message = str(caught.exception)
+                self.assertIn("injected second rollback failure", message)
+                self.assertIn("destination changed during transaction", message)
+                self.assertEqual(first.read_bytes(), foreign)
+                self.assertEqual(module._stat_identity(first.stat()), foreign_state)
+                self.assertEqual(second.read_bytes(), b"installed-b")
+                self.assertTrue(result.manifest_path.is_file())
+                self.assert_no_temporary_files(root)
+
+    @unittest.skipIf(os.name == "nt", "directory permission identity is POSIX-specific")
+    def test_rollback_compensation_rechecks_parent_after_staging(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            parent = root / "owned"
+            parent.mkdir(mode=0o755)
+            first, second = parent / "a.toml", parent / "b.toml"
+            first.write_bytes(b"before-a")
+            second.write_bytes(b"before-b")
+            result = apply_transaction(
+                (FileUpdate(first, b"installed-a"), FileUpdate(second, b"installed-b")),
+                root / "backups",
+            )
+            module = __import__("codex_routing.managed_files", fromlist=["_prepare_stage"])
+            real_prepare = module._prepare_stage
+
+            def change_parent(path: Path, payload: bytes, purpose: str):
+                stage = real_prepare(path, payload, purpose)
+                if purpose == "compensate":
+                    parent.chmod(0o700)
+                return stage
+
+            def fail_second_restore(source: Path, destination: Path) -> None:
+                if destination == second and "rollback" in source.name:
+                    raise OSError("injected second rollback failure")
+                source.replace(destination)
+
+            with mock.patch.object(module, "_prepare_stage", side_effect=change_parent):
+                with self.assertRaisesRegex(RoutingConfigError, "parent changed during transaction"):
+                    rollback_transaction(result.manifest_path, replace=fail_second_restore)
+
+            self.assertEqual(first.read_bytes(), b"before-a")
+            self.assertEqual(second.read_bytes(), b"installed-b")
+            self.assert_no_temporary_files(root)
+
+    def test_compensation_keeps_original_rollback_identity_between_records(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            first, second, third = (root / name for name in ("a.toml", "b.toml", "c.toml"))
+            for path in (first, second, third):
+                path.write_bytes(b"before")
+            result = apply_transaction(
+                tuple(FileUpdate(path, b"installed") for path in (first, second, third)),
+                root / "backups",
+            )
+            module = __import__("codex_routing.managed_files", fromlist=["_prepare_stage"])
+            real_prepare = module._prepare_stage
+            foreign_state = None
+
+            def replace_first_while_compensating_second(path: Path, payload: bytes, purpose: str):
+                nonlocal foreign_state
+                stage = real_prepare(path, payload, purpose)
+                if path == second and purpose == "compensate":
+                    foreign = root / "foreign.toml"
+                    foreign.write_bytes(b"before")
+                    foreign.replace(first)
+                    foreign_state = module._stat_identity(first.stat())
+                return stage
+
+            def fail_third_restore(source: Path, destination: Path) -> None:
+                if destination == third and "rollback" in source.name:
+                    raise OSError("injected third rollback failure")
+                source.replace(destination)
+
+            with mock.patch.object(module, "_prepare_stage", side_effect=replace_first_while_compensating_second):
+                with self.assertRaises(RoutingConfigError) as caught:
+                    rollback_transaction(result.manifest_path, replace=fail_third_restore)
+
+            self.assertIn("injected third rollback failure", str(caught.exception))
+            self.assertIn("destination changed during transaction", str(caught.exception))
+            self.assertEqual(first.read_bytes(), b"before")
+            self.assertEqual(module._stat_identity(first.stat()), foreign_state)
+            self.assertEqual(second.read_bytes(), b"installed")
+            self.assertEqual(third.read_bytes(), b"installed")
             self.assert_no_temporary_files(root)
 
     def test_rollback_publish_and_cleanup_failures_are_aggregated(self) -> None:

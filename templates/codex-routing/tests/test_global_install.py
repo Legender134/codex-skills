@@ -3,12 +3,13 @@ import shutil
 import tempfile
 import tomllib
 import unittest
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from types import SimpleNamespace
 from unittest import mock
 
 from codex_routing.errors import RoutingConfigError
 from codex_routing.global_install import (
+    _classify_home_target,
     _windows_mount_roots,
     install_global,
     plan_global_install,
@@ -23,6 +24,31 @@ from codex_routing.managed_files import (
 
 SOURCE_ROOT = Path(__file__).resolve().parents[1]
 ROLE_NAMES = ("scout", "explorer", "worker", "reviewer", "routine_worker", "critical_reviewer")
+
+
+class NativeWindowsTargetTests(unittest.TestCase):
+    def test_rejects_wsl_unc_aliases_and_extended_paths(self) -> None:
+        for host in ("wsl$", "wsl.localhost", "WSL.LOCALHOST"):
+            for prefix in ("\\\\", "\\\\?\\UNC\\"):
+                path = PureWindowsPath(prefix + host + r"\Ubuntu\home\user\.codex")
+                with self.subTest(path=str(path)), mock.patch(
+                    "codex_routing.global_install.os.name", "nt"
+                ):
+                    with self.assertRaisesRegex(RoutingConfigError, "inside WSL"):
+                        _classify_home_target(path)
+
+    def test_preserves_native_drive_and_unrelated_unc_targets(self) -> None:
+        for path in (
+            r"C:\Users\user\.codex",
+            r"\\?\C:\Users\user\.codex",
+            r"\\fileserver\homes\user\.codex",
+            r"\\?\UNC\fileserver\homes\user\.codex",
+            r"\\wsl.localhost.example\homes\user\.codex",
+        ):
+            with self.subTest(path=path), mock.patch(
+                "codex_routing.global_install.os.name", "nt"
+            ):
+                self.assertEqual(_classify_home_target(PureWindowsPath(path)), "windows")
 
 
 class GlobalInstallTests(unittest.TestCase):

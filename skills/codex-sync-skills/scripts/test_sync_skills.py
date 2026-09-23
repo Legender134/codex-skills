@@ -659,6 +659,41 @@ class ApplyTests(FilesystemCase):
         )
         self.assertIn("CONFLICT\tcodex/conflicting-skill\t", stdout)
 
+    def test_cyclic_links_are_reported_without_blocking_safe_items(self):
+        safe = make_skill(self.codex_source, "safe-skill")
+        make_skill(self.codex_source, "self-loop")
+        make_skill(self.codex_source, "cycle-a")
+        self_loop = self.codex_destination / "self-loop"
+        cycle_a = self.codex_destination / "cycle-a"
+        cycle_b = self.codex_destination / "cycle-b"
+        self_loop.symlink_to("self-loop")
+        cycle_a.symlink_to("cycle-b")
+        cycle_b.symlink_to("cycle-a")
+        links = {path: path.readlink() for path in (self_loop, cycle_a, cycle_b)}
+
+        for apply in (False, True):
+            with self.subTest(apply=apply):
+                arguments = ["--json", "--all"] + (["--apply"] if apply else [])
+                result, stdout, stderr = self.call_main(*arguments)
+                self.assertEqual(result, 2)
+                self.assertEqual(stderr, "")
+                report = json.loads(stdout)
+                statuses = {action["selector"]: action["status"] for action in report["actions"]}
+                self.assertEqual(statuses, {
+                    "codex/safe-skill": "CREATED" if apply else "CREATE",
+                    "codex/self-loop": "CONFLICT",
+                    "codex/cycle-a": "CONFLICT",
+                })
+                for path, target in links.items():
+                    self.assertEqual(path.readlink(), target)
+                    self.assertTrue(any(f"BROKEN_LINK codex/{path.name}:" in issue
+                                        for issue in report["issues"]))
+                destination = self.codex_destination / "safe-skill"
+                if apply:
+                    self.assertEqual(destination.resolve(), safe)
+                else:
+                    self.assertFalse(os.path.lexists(destination))
+
     def test_all_selects_every_discovered_candidate(self):
         codex_source = make_skill(self.codex_source, "codex-skill")
         agents_source = make_skill(self.agents_source, "agents-skill")
