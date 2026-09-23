@@ -18,7 +18,9 @@ Run the utility inside the intended WSL distribution. Do not assume a distributi
 
 The utility infers profiles from its installed source path and current WSL user. Inferred-root mode rejects non-WSL execution; use `--help` and all four explicit roots for testing or a nonstandard layout.
 
-Show the complete output. Preview mode must not mutate the filesystem. Interpret statuses as follows:
+Relative root paths are resolved from the command's working directory before planning links. `--skill` limits discovery and root validation to the selected scopes. Without selectors, inspect both scopes. An absent inferred Windows source is an empty scope; still check any existing WSL destination for broken links. Explicit roots in an inspected scope must exist, and an existing source requires a WSL destination directory. Preview never creates directories.
+
+Show the complete output, including the selector, source, and destination. Preview mode must not mutate the filesystem. Interpret statuses as follows:
 
 | Status | Meaning |
 |---|---|
@@ -53,6 +55,8 @@ Present the portable selectors, sources, and destinations in the preview. Reuse 
 Run `--apply` with one repeated `--skill SCOPE/NAME` per approved candidate. Use `--all` only when every eligible candidate was explicitly approved. Use `--help` for root syntax.
 
 After applying, expect each newly linked selection to report `CREATED`. Preview again and verify every selected entry is `UNCHANGED`. If any entry is `CONFLICT`, report its exact path and leave it untouched; resolving or replacing it requires a separate user decision.
+
+`CREATED` requires a readable `SKILL.md` through the new link. If that check fails after creation, report `CONFLICT` and preserve the link for inspection; do not silently remove it or report success.
 
 ## Exclusions
 

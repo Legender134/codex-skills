@@ -5,7 +5,7 @@ Use this for review, completion, and submission preparation. Submission is a ver
 ## Inspect the complete change
 
 - Select and name the evidence-backed base; inspect full status and the complete diff against it.
-- Inspect every changed and untracked file, plus unusually large and generated files.
+- Inspect the complete tracked diff. Inventory untracked paths and their ownership; inspect the contents of submission candidates and files needed to assess the change. Unrelated datasets, logs, and generated artifacts need only a path-level inventory unless evidence makes their contents relevant.
 - Distinguish the whole worktree from the exact submission candidate; local exploratory work may remain unselected.
 - Check for secrets, credentials, machine-specific paths, dead code, duplicate or competing implementations, broad formatting churn, and abandoned artifacts.
 - Confirm each file has a repository- and task-based purpose; treat line/file/test ratios only as anomaly signals.
@@ -38,4 +38,4 @@ Classify each known item as **keep**, **archive**, or **cleanup candidate**. Rep
 
 ## Authorization gate
 
-Stop and obtain explicit authorization before deletion or material overwrite/move, branch or history rewrite, commit, push, merge-request/pull-request creation, or any external mutation. If cleanup is desired but unauthorized, preserve the current work and propose a clean branch with selective migration.
+Before deletion or material overwrite/move, branch or history rewrite, commit, push, merge-request/pull-request creation, or any external mutation, check whether the user's existing authorization covers the action and exact targets. Proceed when it does; stop and ask only for missing authorization or a material change in scope or risk. If cleanup is desired but unauthorized, preserve the current work and propose a clean branch with selective migration.

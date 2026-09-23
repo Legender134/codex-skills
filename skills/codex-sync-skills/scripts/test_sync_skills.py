@@ -3,6 +3,7 @@ from contextlib import redirect_stderr, redirect_stdout
 import io
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -146,6 +147,45 @@ class PortableDefaultsTests(unittest.TestCase):
             stderr.getvalue(),
         )
 
+    def test_absent_inferred_source_preserves_wsl_only_skills(self):
+        script = self.make_script(".codex")
+        windows_codex = self.windows_profile / ".codex" / "skills"
+        wsl_codex = self.wsl_home / ".codex" / "skills"
+        wsl_agents = self.wsl_home / ".agents" / "skills"
+        wsl_codex.mkdir(parents=True)
+        wsl_agents.mkdir(parents=True)
+        make_skill(windows_codex, "portable-skill")
+        local = make_skill(wsl_agents, "local-only")
+        before = (local / "SKILL.md").read_bytes()
+        stdout = io.StringIO()
+        with (
+            patch.dict(os.environ, {"WSL_DISTRO_NAME": "Ubuntu-Test"}, clear=True),
+            redirect_stdout(stdout),
+        ):
+            result = sync_skills.main([], script_file=script, wsl_home=self.wsl_home)
+        self.assertEqual(result, 0)
+        self.assertIn("CREATE\tcodex/portable-skill\t", stdout.getvalue())
+        self.assertEqual((local / "SKILL.md").read_bytes(), before)
+        self.assertFalse((self.windows_profile / ".agents").exists())
+
+    def test_absent_inferred_source_does_not_hide_invalid_explicit_destination(self):
+        script = self.make_script(".codex")
+        wsl_codex = self.wsl_home / ".codex" / "skills"
+        wsl_codex.mkdir(parents=True)
+        destination = self.wsl_home / "misspelled-agents-root"
+        stderr = io.StringIO()
+        with (
+            patch.dict(os.environ, {"WSL_DISTRO_NAME": "Ubuntu-Test"}, clear=True),
+            redirect_stderr(stderr),
+        ):
+            result = sync_skills.main(
+                ["--wsl-agents-root", str(destination)],
+                script_file=script, wsl_home=self.wsl_home,
+            )
+        self.assertEqual(result, 1)
+        self.assertIn("missing agents WSL destination root", stderr.getvalue())
+        self.assertFalse(destination.exists())
+
     def test_public_files_do_not_pin_a_local_account_or_distribution(self):
         skill_root = Path(__file__).parent.parent
         paths = (skill_root / "SKILL.md", skill_root / "scripts" / "sync_skills.py")
@@ -179,7 +219,14 @@ class DiscoveryTests(FilesystemCase):
         self.agents_source.rmdir()
         self.agents_destination.rmdir()
 
-        candidates, issues = sync_skills.discover_candidates(self.scopes)
+        scopes = (
+            self.scopes[0],
+            sync_skills.Scope(
+                "agents", self.agents_source, self.agents_destination,
+                allow_absent_source=True,
+            ),
+        )
+        candidates, issues = sync_skills.discover_candidates(scopes)
 
         self.assertEqual(issues, [])
         self.assertEqual(
@@ -216,8 +263,52 @@ class DiscoveryTests(FilesystemCase):
             ["REJECTED codex/escaped-skill: source escapes approved root"],
         )
 
+    def test_optional_source_root_with_broken_link_is_not_skipped(self):
+        self.agents_source.rmdir()
+        self.agents_source.symlink_to(self.base / "missing-root")
+        scope = sync_skills.Scope(
+            "agents", self.agents_source, self.agents_destination,
+            allow_absent_source=True,
+        )
+        with self.assertRaisesRegex(ValueError, "missing agents Windows source root"):
+            sync_skills.discover_candidates([scope])
+        self.assertTrue(self.agents_source.is_symlink())
+
 
 class OrphanedLinkTests(FilesystemCase):
+    def test_absent_optional_source_still_reports_orphaned_links(self):
+        self.agents_source.rmdir()
+        target = self.agents_source / "retired"
+        destination = self.agents_destination / "retired"
+        destination.symlink_to(target)
+        scope = sync_skills.Scope(
+            "agents", self.agents_source, self.agents_destination,
+            allow_absent_source=True,
+        )
+        candidates, issues = sync_skills.discover_candidates([scope])
+        self.assertEqual(candidates, {})
+        self.assertEqual(len(issues), 1)
+        self.assertIn("BROKEN_LINK agents/retired", issues[0])
+        self.assertEqual(destination.readlink(), target)
+
+    def test_unreadable_skill_is_rejected_and_link_is_reported(self):
+        source = make_skill(self.codex_source, "unreadable")
+        destination = self.codex_destination / "unreadable"
+        destination.symlink_to(source)
+        original_open = Path.open
+
+        def deny_skill_read(path, *args, **kwargs):
+            if path.name == "SKILL.md" and path.parent.resolve() == source:
+                raise PermissionError("fixture denies reading this skill")
+            return original_open(path, *args, **kwargs)
+
+        with patch.object(Path, "open", deny_skill_read):
+            candidates, issues = sync_skills.discover_candidates(self.scopes)
+        self.assertEqual(candidates, {})
+        self.assertTrue(any("REJECTED codex/unreadable" in issue for issue in issues))
+        self.assertTrue(any("BROKEN_LINK codex/unreadable" in issue for issue in issues))
+        self.assertEqual(destination.readlink(), source)
+
     def test_preview_reports_source_missing_link_without_changing_it(self):
         destination = self.codex_destination / "retired-gpu-skill"
         target = self.codex_source / "retired-gpu-skill"
@@ -327,6 +418,116 @@ class ApplyTests(FilesystemCase):
         self.assertIn("CREATE\tcodex/preview-skill\t", stdout)
         self.assertEqual(stderr, "")
         self.assertFalse(os.path.lexists(self.codex_destination / "preview-skill"))
+
+    def test_text_preview_includes_reviewable_source_and_destination(self):
+        source = make_skill(self.codex_source, "preview-paths")
+        result, stdout, stderr = self.call_main()
+        self.assertEqual(result, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(
+            stdout.strip().split("\t"),
+            ["CREATE", "codex/preview-paths", str(source),
+             str(self.codex_destination / "preview-paths"), "destination is missing"],
+        )
+
+    def test_inaccessible_source_directory_does_not_hide_valid_preview(self):
+        make_skill(self.codex_source, "good-skill")
+        blocked = make_skill(self.codex_source, "blocked-skill")
+        original_is_file = Path.is_file
+
+        def deny_metadata(path):
+            if path == blocked / "SKILL.md":
+                raise PermissionError("fixture denies directory traversal")
+            return original_is_file(path)
+
+        with patch.object(Path, "is_file", deny_metadata):
+            result, stdout, stderr = self.call_main("--skill", "codex/good-skill")
+        self.assertEqual(result, 2)
+        self.assertEqual(stderr, "")
+        self.assertIn("CREATE\tcodex/good-skill\t", stdout)
+        self.assertIn("REJECTED codex/blocked-skill", stdout)
+        self.assertFalse(os.path.lexists(self.codex_destination / "good-skill"))
+
+    def test_relative_cli_roots_create_readable_link_and_preview_unchanged(self):
+        source = make_skill(self.codex_source, "relative-roots")
+        arguments = self.root_arguments()
+        for index in range(1, len(arguments), 2):
+            arguments[index] = str(Path(arguments[index]).relative_to(self.base))
+        command = [
+            sys.executable, str(Path(sync_skills.__file__).resolve()),
+            *arguments, "--skill", "codex/relative-roots", "--json",
+        ]
+        applied = subprocess.run(
+            [*command, "--apply"], cwd=self.base, capture_output=True, text=True,
+        )
+        self.assertEqual(applied.returncode, 0, applied.stderr)
+        self.assertEqual(json.loads(applied.stdout)["actions"][0]["status"], "CREATED")
+        destination = self.codex_destination / "relative-roots"
+        self.assertEqual(destination.resolve(), source)
+        self.assertEqual((destination / "SKILL.md").read_bytes(), (source / "SKILL.md").read_bytes())
+        preview = subprocess.run(command, cwd=self.base, capture_output=True, text=True)
+        self.assertEqual(preview.returncode, 0, preview.stderr)
+        self.assertEqual(json.loads(preview.stdout)["actions"][0]["status"], "UNCHANGED")
+
+    def test_selected_scope_ignores_missing_unselected_roots(self):
+        source = make_skill(self.codex_source, "selected-scope")
+        self.agents_source.rmdir()
+        self.agents_destination.rmdir()
+        result, stdout, stderr = self.call_main(
+            "--apply", "--skill", "codex/selected-scope",
+        )
+        self.assertEqual(result, 0, stderr)
+        self.assertIn("CREATED\tcodex/selected-scope\t", stdout)
+        self.assertEqual((self.codex_destination / "selected-scope").resolve(), source)
+        self.assertFalse(self.agents_source.exists())
+        self.assertFalse(self.agents_destination.exists())
+
+    def test_explicit_missing_source_is_error_before_mutation(self):
+        make_skill(self.codex_source, "valid-skill")
+        self.agents_source.rmdir()
+        result, stdout, stderr = self.call_main("--apply", "--all")
+        self.assertEqual(result, 1)
+        self.assertEqual(stdout, "")
+        self.assertIn("missing agents Windows source root", stderr)
+        self.assertFalse(os.path.lexists(self.codex_destination / "valid-skill"))
+
+    def test_source_lost_after_preview_is_not_reported_created(self):
+        source = make_skill(self.codex_source, "lost-source")
+        destination = self.codex_destination / "lost-source"
+        actions = sync_skills.plan_actions({"codex/lost-source": (source, destination)})
+        (source / "SKILL.md").unlink()
+        results, failed = sync_skills.apply_actions(actions)
+        self.assertTrue(failed)
+        self.assertEqual(results[0].status, "CONFLICT")
+        self.assertFalse(os.path.lexists(destination))
+
+    def test_unreadable_new_link_reports_conflict_without_removing_it(self):
+        source = make_skill(self.codex_source, "lost-during-create")
+        original_symlink = Path.symlink_to
+
+        def link_then_lose_source(path, target, **kwargs):
+            original_symlink(path, target, **kwargs)
+            (source / "SKILL.md").unlink()
+
+        with patch.object(Path, "symlink_to", link_then_lose_source):
+            result, stdout, _ = self.call_main(
+                "--apply", "--skill", "codex/lost-during-create",
+            )
+        self.assertEqual(result, 2)
+        self.assertIn("CONFLICT\tcodex/lost-during-create\t", stdout)
+        self.assertNotIn("CREATED", stdout)
+        self.assertTrue((self.codex_destination / "lost-during-create").is_symlink())
+
+    def test_parser_usage_errors_return_one_and_do_not_mutate(self):
+        make_skill(self.codex_source, "parser-skill")
+        for arguments in [("--unknown-option",), ("--skill",),
+                          ("--all", "--skill", "codex/parser-skill")]:
+            with self.subTest(arguments=arguments):
+                result, stdout, stderr = self.call_main(*arguments)
+                self.assertEqual(result, 1)
+                self.assertEqual(stdout, "")
+                self.assertIn("error:", stderr)
+                self.assertFalse(os.path.lexists(self.codex_destination / "parser-skill"))
 
     def test_apply_creates_only_selected_link(self):
         first = make_skill(self.codex_source, "first-skill")

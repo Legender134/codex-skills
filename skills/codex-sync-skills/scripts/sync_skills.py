@@ -19,6 +19,7 @@ class Scope:
     name: str
     source: Path
     destination: Path
+    allow_absent_source: bool = False
 
 
 @dataclass(frozen=True)
@@ -80,6 +81,18 @@ def _require_directory(root: Path, label: str) -> Path:
     return root.resolve(strict=True)
 
 
+def _has_readable_skill(directory: Path) -> bool:
+    skill_file = directory / "SKILL.md"
+    try:
+        if not skill_file.is_file():
+            return False
+        with skill_file.open("rb") as stream:
+            stream.read(1)
+    except OSError:
+        return False
+    return True
+
+
 def discover_candidates(
     scopes: Sequence[Scope],
 ) -> tuple[dict[str, tuple[Path, Path]], list[str]]:
@@ -87,23 +100,30 @@ def discover_candidates(
     issues: list[str] = []
 
     for scope in sorted(scopes, key=lambda item: item.name):
-        if not os.path.lexists(scope.source) and not os.path.lexists(
-            scope.destination
-        ):
+        source_root = None
+        if os.path.lexists(scope.source) or not scope.allow_absent_source:
+            source_root = _require_directory(
+                scope.source,
+                f"{scope.name} Windows source",
+            )
+        if source_root is None and not os.path.lexists(scope.destination):
             continue
-        source_root = _require_directory(
-            scope.source,
-            f"{scope.name} Windows source",
-        )
-        _require_directory(
+        destination_root = _require_directory(
             scope.destination,
             f"{scope.name} WSL destination",
         )
 
-        for child in sorted(scope.source.iterdir(), key=lambda item: item.name):
+        children = source_root.iterdir() if source_root is not None else ()
+        for child in sorted(children, key=lambda item: item.name):
             if child.name == ".system":
                 continue
-            if not child.is_dir() or not (child / "SKILL.md").is_file():
+            try:
+                if not child.is_dir() or not (child / "SKILL.md").is_file():
+                    continue
+            except OSError as exc:
+                issues.append(
+                    f"REJECTED {scope.name}/{child.name}: cannot inspect source skill: {exc}"
+                )
                 continue
 
             selector = f"{scope.name}/{child.name}"
@@ -120,13 +140,17 @@ def discover_candidates(
                 )
                 continue
 
-            candidates[selector] = (child, scope.destination / child.name)
+            if not _has_readable_skill(child):
+                issues.append(f"REJECTED {selector}: source has no readable SKILL.md")
+                continue
+
+            candidates[selector] = (child, destination_root / child.name)
 
         # Destination-only broken links otherwise disappear from source discovery.
-        for destination in sorted(scope.destination.iterdir(), key=lambda item: item.name):
+        for destination in sorted(destination_root.iterdir(), key=lambda item: item.name):
             if destination.name == ".system" or not destination.is_symlink():
                 continue
-            if not (destination / "SKILL.md").is_file():
+            if not _has_readable_skill(destination):
                 issues.append(
                     f"BROKEN_LINK {scope.name}/{destination.name}: "
                     f"destination has no readable SKILL.md: {destination}"
@@ -211,10 +235,14 @@ def apply_actions(actions: Sequence[Action]) -> tuple[list[Action], bool]:
     for action in actions:
         if action.status == "CREATE":
             try:
+                if not _has_readable_skill(action.source):
+                    raise OSError("source has no readable SKILL.md")
                 action.destination.symlink_to(
                     action.source,
                     target_is_directory=True,
                 )
+                if not _has_readable_skill(action.destination):
+                    raise OSError("created link has no readable SKILL.md")
             except OSError as exc:
                 results.append(
                     Action(
@@ -244,8 +272,14 @@ def apply_actions(actions: Sequence[Action]) -> tuple[list[Action], bool]:
     return results, failed
 
 
+class UsageParser(argparse.ArgumentParser):
+    def error(self, message: str) -> None:
+        self.print_usage(sys.stderr)
+        self.exit(1, f"{self.prog}: error: {message}\n")
+
+
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
+    parser = UsageParser(
         description="Preview or create reviewed WSL links to Windows Codex Skills.",
         epilog="Exit codes: 0=safe result, 1=usage/environment error, "
         "2=conflict or rejected candidate.",
@@ -350,6 +384,7 @@ def _print_results(
         print(
             action.status,
             action.selector,
+            action.source,
             action.destination,
             action.detail,
             sep="\t",
@@ -377,19 +412,35 @@ def main(
         return 1
 
     try:
+        selected_scopes = set()
+        for selector in args.skill:
+            if not SAFE_SELECTOR.fullmatch(selector):
+                raise ValueError(f"invalid selector: {selector}")
+            selected_scopes.add(selector.split("/", 1)[0])
         roots = _resolve_roots(
             args,
             script_file or Path(__file__),
             wsl_home,
         )
         scopes = (
-            Scope("codex", roots.windows_codex, roots.wsl_codex),
-            Scope("agents", roots.windows_agents, roots.wsl_agents),
+            Scope(
+                "codex", roots.windows_codex, roots.wsl_codex,
+                allow_absent_source=args.windows_codex_root is None,
+            ),
+            Scope(
+                "agents", roots.windows_agents, roots.wsl_agents,
+                allow_absent_source=args.windows_agents_root is None,
+            ),
         )
+        if selected_scopes:
+            scopes = tuple(scope for scope in scopes if scope.name in selected_scopes)
+        for scope in scopes:
+            if getattr(args, f"wsl_{scope.name}_root") is not None:
+                _require_directory(scope.destination, f"{scope.name} WSL destination")
         candidates, issues = discover_candidates(scopes)
         planned = plan_actions(candidates)
         selected = select_actions(planned, args.skill, args.all)
-    except ValueError as exc:
+    except (ValueError, OSError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
 

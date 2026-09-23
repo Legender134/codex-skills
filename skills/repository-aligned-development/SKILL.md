@@ -15,6 +15,8 @@ Treat discovery as read-only and every pre-existing change as user-owned.
 
 For a mutation, inspect status, applicable instructions, configuration, and analogous code. Record a baseline that distinguishes pre-existing user work. For low-risk work, state `Outcome | Baseline | Exploration boundaries | Verification`.
 
+When the user names a remote repository or version as authoritative, record that source, ref, and resolved commit and inspect its original files. Do not infer the current version from webpage summaries or assume a local checkout matches it. Keep the source baseline distinct from installed copies and local user changes; obtain missing source evidence before replacing their contents.
+
 Read [references/repository-contract.md](references/repository-contract.md) when work affects a dependency, public interface, generated-artifact policy, governed subsystem, or materially overlaps user work, and for formal change or branch review. Exploration boundaries protect user work, repository isolation, and authorization; they are not an exact development file allowlist.
 
 ## During development
