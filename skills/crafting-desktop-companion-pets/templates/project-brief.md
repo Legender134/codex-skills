@@ -28,12 +28,23 @@ before locking the route. Record the capability matrix:
 - Limitations:
 - Complexity/extensibility:
 - Route-changing uncertainty:
-- Explicit post-research confirmation:
+- Selected format and FORMAT_CONFIRMATION status:
+- Decision authority and source: prior explicit user choice, user-authorized
+  agent selection, or post-research user confirmation (quote/link the authority):
+- Capability evidence supporting the selected route:
+- Unresolved conflict or user-reserved decision, if any:
 
 Use the version references for current runtime capability authority. This human
 decision record does not define package or manifest JSON fields. Do not lock the
 schema, atlas/layer architecture, final action contract, or batch production
-before the explicit post-research confirmation.
+until the selected route is supported by the capability evidence and existing
+authority. Preserve a compatible prior explicit user choice; when the user has
+delegated format selection, record the agent's evidence-based choice and that
+delegation. A preference alone is not authorization. Use FORMAT_CONFIRMATION:
+PENDING only for an unresolved route-changing conflict, missing choice/authority,
+or a decision the user explicitly reserved. Ask for that specific decision without
+repeating valid approvals. A same-version repair may record N/A — detected
+<version> retained.
 
 ## Authorization
 

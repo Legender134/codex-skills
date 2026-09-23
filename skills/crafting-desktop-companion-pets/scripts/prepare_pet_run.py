@@ -89,6 +89,7 @@ def prepare_pet_run(
     identity = json_templates["identity-contract.json"]
     identity["projectId"] = project_id
     identity["identityRoute"] = identity_route
+    identity["formatRoute"] = format_route
     _write_json(run_dir / "contracts" / "identity.json", identity)
 
     for template_name, destination in (

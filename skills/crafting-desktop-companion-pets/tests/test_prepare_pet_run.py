@@ -46,6 +46,7 @@ class PreparePetRunTest(unittest.TestCase):
                 (run / "contracts" / "identity.json").read_text(encoding="utf-8")
             )
             self.assertEqual(identity["identityRoute"], "original-brand")
+            self.assertEqual(identity["formatRoute"], "v3")
             self.assertEqual(identity["selection"], "candidate")
             self.assertEqual(identity["visualStatus"], "not-reviewed")
             sources = json.loads(
@@ -66,6 +67,16 @@ class PreparePetRunTest(unittest.TestCase):
         for route in ("undecided", "v2", "v3", "v4"):
             with self.subTest(route=route), tempfile.TemporaryDirectory() as raw:
                 run = prepare_pet_run(Path(raw), "cloud-cat", "original-brand", route)
+                for relative in (
+                    "contracts/identity.json",
+                    "contracts/actions/action-contract.json",
+                    "jobs.json",
+                    "qa/visual-verdict.json",
+                    "run-summary.json",
+                ):
+                    with self.subTest(record=relative):
+                        record = json.loads((run / relative).read_text(encoding="utf-8"))
+                        self.assertEqual(record["formatRoute"], route)
                 state = json.loads((run / "production-state.json").read_text(encoding="utf-8"))
                 self.assertEqual(state["projectId"], "cloud-cat")
                 self.assertEqual(state["identityRoute"], "original-brand")

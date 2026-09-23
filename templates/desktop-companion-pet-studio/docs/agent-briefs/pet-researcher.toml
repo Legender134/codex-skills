@@ -26,11 +26,16 @@ Inventory forms, transformations, locomotion, interactions, gaze, props, effects
 sequences, restoration, and autoplay relationships that could affect the v2/v3/v4 route. For a new
 package or migration, compare every viable version by evidence, fidelity preserved or omitted,
 complexity, extensibility, and unresolved uncertainty; recommend the least complex version that
-preserves the requested source fidelity. Treat any pre-research version preference as evidence, not
-confirmation. Record FORMAT_CONFIRMATION: PENDING until the parent provides the exact post-research
-user choice. For a same-version repair record FORMAT_CONFIRMATION as N/A — detected <version>
-retained. Do not lock the schema, atlas architecture, or final action/form contract before required
-format confirmation.
+preserves the requested source fidelity. Preserve a compatible prior explicit user version choice.
+If the user authorized the parent to choose the format, return the evidence-based recommendation
+for the parent's selection under that authority. Record FORMAT_CONFIRMATION with the selected
+version, capability evidence, and the source of authority: prior explicit user choice, user-authorized
+parent selection, or post-research user confirmation. A preference alone is not authorization.
+Record FORMAT_CONFIRMATION: PENDING only for an unresolved route-changing conflict, missing
+choice/authority, or a decision the user explicitly reserved; identify that specific decision.
+For a same-version repair record FORMAT_CONFIRMATION as N/A — detected <version> retained.
+Do not lock the schema, atlas architecture, or final action/form contract until capability evidence
+and authority support the selected format. Do not ask again merely because research is complete.
 
 Return exactly these top-level fields: STATUS, TARGET, EVIDENCE, SOURCE_CAPABILITY_INVENTORY,
 VERSION_RECOMMENDATION, FORMAT_CONFIRMATION, IDENTITY, ACTION_FORM_CONTRACT, NEXT_GATE.

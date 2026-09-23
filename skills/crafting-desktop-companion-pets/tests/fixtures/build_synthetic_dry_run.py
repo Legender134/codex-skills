@@ -555,6 +555,9 @@ def build_synthetic_dry_run(output: Path) -> dict[str, object]:
     """Populate one already-prepared run without writing outside ``output``."""
     root = _prepared_run_root(output)
     _preflight_existing_run_tree(root)
+    prepared_identity = json.loads(
+        _assert_existing_regular_leaf(root, "contracts/identity.json").read_text(encoding="utf-8")
+    )
     package_root = _assert_new_directory(root, PACKAGE_DIRECTORY_RELATIVE_PATH)
     leaf_paths = {
         relative: _assert_new_leaf(root, relative)
@@ -666,7 +669,7 @@ synthetic fixture. No visual identity verdict has been recorded.
             "schemaVersion": 1,
             "projectId": PROJECT_ID,
             "identityRoute": "original-brand",
-            "formatRoute": "v4",
+            "formatRoute": prepared_identity["formatRoute"],
             "morphology": "flying",
             "status": "visual-candidate",
             "selection": "candidate",

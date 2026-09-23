@@ -24,9 +24,16 @@ guarantees exact proportions, animation continuity or alpha quality.
 | Transparency | `background=transparent` with PNG or WebP; validate actual alpha |
 | Size | `auto`, or both edges divisible by 16, max edge 3840, ratio at most 3:1, 655360–8294400 total pixels |
 
-Start a representative comparison at 1024x1024 and medium quality; raise quality
-only for an observed need. Do not send runtime-cell sizes such as 192x208 to the
-API: generate within its limits, then deterministically register the result.
+For a new workflow without an established baseline, 1024x1024 and medium quality
+can be an exploratory starting point when the composition fits. For a migration
+or model comparison, preserve the baseline prompt, references, output dimensions,
+format and explicitly selected quality when both models support them. Record any
+necessary parameter incompatibility; do not silently reset the baseline. Change
+one setting at a time in response to an unmet acceptance criterion, and measure
+quality and latency before adopting the change. Outputs above 3,686,400 total pixels
+(2560x1440) are experimental, not a default production target.
+Do not send runtime-cell sizes such as 192x208 to the API: generate within its
+limits, then deterministically register the result.
 Image 2 transparency is now in preview; older blanket rejection of transparency
 is not a reason to silently downgrade models. Preserve explicitly selected models
 and their own limits. An older local CLI may reject newer controls: inspect its
@@ -34,6 +41,7 @@ version/help and perform an authorized compatibility update before using it.
 This skill does not replace the host's bundled imagegen skill or authorize API use.
 
 Sources: [image generation](https://developers.openai.com/api/docs/guides/image-generation),
+[image prompting and migration](https://developers.openai.com/api/docs/guides/image-prompting),
 [Sunburst](https://developers.openai.com/api/docs/models/gpt-image-2.5-sunburst),
 [Flare](https://developers.openai.com/api/docs/models/gpt-image-2.5-flare),
 [Astra guidance](https://developers.openai.com/api/docs/guides/latest-model).

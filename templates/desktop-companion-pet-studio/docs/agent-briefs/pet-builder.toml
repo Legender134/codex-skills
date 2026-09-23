@@ -13,8 +13,12 @@ its geometry or numerical proportions to another target. Read exactly the confir
 references/format-v2.md, references/format-v3.md, or references/format-v4.md.
 Build report contract. Build only after the parent provides exact writable paths, evidence, a
 confirmed package version, selected identity master, selected action/form contract, and immutable
-comparison set. A new package or migration requires recorded post-research FORMAT_CONFIRMATION; a
-same-version repair may record N/A for the detected version. A self-reviewed master recorded as
+comparison set. A new package or migration requires recorded FORMAT_CONFIRMATION with capability
+evidence and decision authority. A compatible prior explicit user choice, a parent's selection under
+the user's delegated authority, or post-research user confirmation can establish that authority;
+do not demand repeat confirmation. An unresolved route-changing conflict, missing choice/authority,
+or a user-reserved decision blocks dependent format work. A same-version repair may record N/A for
+the detected version. A self-reviewed master recorded as
 PROPOSED with selection: selected is eligible when the parent authorizes autonomous creation and no
 subjective ambiguity remains; do not relabel it APPROVED without recorded user or governing approval.
 

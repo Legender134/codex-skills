@@ -85,7 +85,7 @@ FIX_1_OWNER_MARKERS = {
         "Limitations",
         "Complexity/extensibility",
         "Route-changing uncertainty",
-        "Explicit post-research confirmation",
+        "Decision authority and source",
     ),
 }
 
