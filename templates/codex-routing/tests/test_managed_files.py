@@ -93,6 +93,78 @@ class ManagedFilesTests(unittest.TestCase):
             self.assertEqual(second.read_bytes(), b"before-agents\n")
             self.assert_no_temporary_files(root)
 
+    def test_incomplete_recovery_preserves_manifest_and_failure_status(self) -> None:
+        for failure_point in ("second-file", "published-manifest"):
+            with self.subTest(failure_point=failure_point), tempfile.TemporaryDirectory() as raw:
+                root = Path(raw)
+                first, second = root / "a.toml", root / "b.toml"
+                first.write_bytes(b"before-a")
+                second.write_bytes(b"before-b")
+
+                def fail_publish_and_recovery(source: Path, destination: Path) -> None:
+                    if destination == first and "rollback" in source.name:
+                        raise OSError("injected recovery failure")
+                    if failure_point == "second-file" and destination == second:
+                        raise OSError("injected publication failure")
+                    source.replace(destination)
+                    if failure_point == "published-manifest" and destination.name == "manifest.json":
+                        raise OSError("injected manifest publication failure")
+
+                with self.assertRaises(RoutingConfigError) as caught:
+                    apply_transaction(
+                        (FileUpdate(first, b"after-a"), FileUpdate(second, b"after-b")),
+                        root / "backups", replace=fail_publish_and_recovery,
+                    )
+
+                transaction = next((root / "backups").iterdir())
+                manifest_name = "manifest.pending.json" if failure_point == "second-file" else "manifest.json"
+                manifest = transaction / manifest_name
+                self.assertIn(str(transaction), str(caught.exception))
+                self.assertIn("recovery incomplete", str(caught.exception))
+                self.assertEqual(plan_rollback(manifest).destinations, (first, second))
+                for record in json.loads(manifest.read_bytes())["files"]:
+                    prior = (transaction / record["backup_path"]).read_bytes()
+                    self.assertEqual(hashlib.sha256(prior).hexdigest(), record["prior_sha256"])
+                    self.assertEqual(prior, b"before-a" if record["path"] == str(first) else b"before-b")
+                status = json.loads((transaction / "recovery-required.json").read_bytes())
+                self.assertEqual(status["status"], "incomplete")
+                self.assertIn("injected recovery failure", status["rollback_errors"][0])
+                # A mixed transaction needs reconciliation; it cannot be blindly rerun.
+                with self.assertRaisesRegex(RoutingConfigError, "digest mismatch"):
+                    rollback_transaction(manifest)
+                self.assertEqual(first.read_bytes(), b"after-a")
+                self.assertEqual(second.read_bytes(), b"before-b")
+                self.assert_no_temporary_files(root)
+
+    def test_recovery_status_write_failure_still_preserves_original_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            destination = root / "config.toml"
+            destination.write_bytes(b"before")
+            module = __import__("codex_routing.managed_files", fromlist=["_write_exclusive"])
+            real_write = module._write_exclusive
+
+            def fail_status(path: Path, payload: bytes):
+                if path.name == "recovery-required.json":
+                    raise OSError("status storage unavailable")
+                return real_write(path, payload)
+
+            def fail_after_publish(source: Path, target: Path) -> None:
+                if "rollback" in source.name:
+                    raise OSError("recovery unavailable")
+                source.replace(target)
+                raise OSError("publication failed after replacement")
+
+            with mock.patch("codex_routing.managed_files._write_exclusive", side_effect=fail_status):
+                with self.assertRaisesRegex(RoutingConfigError, "status storage unavailable"):
+                    apply_transaction(
+                        (FileUpdate(destination, b"after"),), root / "backups",
+                        replace=fail_after_publish,
+                    )
+            manifest = next((root / "backups").rglob("manifest.pending.json"))
+            self.assertEqual(plan_rollback(manifest).destinations, (destination,))
+            self.assertEqual(destination.read_bytes(), b"after")
+
     def test_manifest_publish_then_raise_removes_owned_manifest_and_restores_files(
         self,
     ) -> None:
@@ -586,7 +658,26 @@ class ManagedFilesTests(unittest.TestCase):
             self.assertEqual(result.changed_paths, ())
             self.assertEqual(destination_replaces, [])
             self.assertEqual(destination.read_bytes(), b"same\n")
-            self.assertEqual(json.loads(result.manifest_path.read_text())["files"], [])
+            self.assertIsNone(result.manifest_path)
+            self.assertFalse((root / "backups").exists())
+
+    def test_no_op_apply_rechecks_captured_bytes_without_creating_backups(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            destination = root / "config.toml"
+            destination.write_bytes(b"same")
+            module = __import__("codex_routing.managed_files", fromlist=["_revalidate_updates"])
+            real_revalidate = module._revalidate_updates
+
+            def change_before_revalidation(records):
+                destination.write_bytes(b"foreign")
+                real_revalidate(records)
+
+            with mock.patch("codex_routing.managed_files._revalidate_updates", side_effect=change_before_revalidation):
+                with self.assertRaisesRegex(RoutingConfigError, "changed during transaction"):
+                    apply_transaction((FileUpdate(destination, b"same"),), root / "backups")
+            self.assertEqual(destination.read_bytes(), b"foreign")
+            self.assertFalse((root / "backups").exists())
 
     def test_no_op_destination_race_is_revalidated_before_publication(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

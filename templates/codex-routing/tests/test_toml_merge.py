@@ -1,5 +1,6 @@
 import tomllib
 import unittest
+from unittest import mock
 
 from codex_routing.errors import RoutingConfigError
 from codex_routing.spec import GLOBAL_POLICIES
@@ -207,6 +208,46 @@ class TomlMergeTests(unittest.TestCase):
     def test_invalid_toml_is_rejected(self) -> None:
         with self.assertRaisesRegex(RoutingConfigError, "invalid TOML"):
             merge_global_config('model = "unterminated\n', GLOBAL_POLICIES["wsl"])
+
+    def test_unmanaged_nested_arrays_are_not_scanned_as_table_headers(self) -> None:
+        values = (
+            '[\n ["agents"]\n]',
+            '[\n ["model"], # ] is a comment\n ["[", "]", "{", "}"]\n]',
+            '[\n [["agents"]],\n [{value = "table-shaped array"}]\n]',
+            '[\n """\n[agents]\n""",\n ["another value"]\n]',
+        )
+        for value in values:
+            for table in ("", "[agents]\n"):
+                for newline in ("\n", "\r\n"):
+                    with self.subTest(value=value, table=table, newline=newline):
+                        note = f"notes = {value}\n".replace("\n", newline)
+                        existing = table.replace("\n", newline) + note
+                        before = tomllib.loads(existing)
+                        merged = merge_global_config(existing, GLOBAL_POLICIES["wsl"])
+                        after = tomllib.loads(merged)
+                        self.assertEqual((after["agents"] if table else after)["notes"],
+                                         (before["agents"] if table else before)["notes"])
+                        self.assertIn(note, merged)
+                        self.assertEqual(after["model"], "gpt-6-sol")
+                        self.assertEqual(merge_global_config(merged, GLOBAL_POLICIES["wsl"]), merged)
+
+    def test_unmanaged_nan_values_survive_without_masking_other_changes(self) -> None:
+        existing = 'custom = nan\nvalues = [nan, +nan, -nan, inf, -inf]\n[other]\nvalue = nan\n'
+        merged = merge_global_config(existing, GLOBAL_POLICIES["wsl"])
+        self.assertIn('custom = nan\nvalues = [nan, +nan, -nan, inf, -inf]\n', merged)
+        self.assertEqual(merge_global_config(merged, GLOBAL_POLICIES["wsl"]), merged)
+        with mock.patch('codex_routing.toml_merge.replace_or_insert_owned_assignments',
+                        return_value=merged.replace('custom = nan', 'custom = 0')):
+            with self.assertRaisesRegex(RoutingConfigError, 'changed an unmanaged setting'):
+                merge_global_config(existing, GLOBAL_POLICIES["wsl"])
+
+    def test_unicode_separators_inside_strings_are_preserved(self) -> None:
+        for separator in ('\u0085', '\u2028', '\u2029'):
+            with self.subTest(separator=separator):
+                existing = f'notes = "text{separator}model = example"\n'
+                merged = merge_global_config(existing, GLOBAL_POLICIES["wsl"])
+                self.assertIn(existing, merged)
+                self.assertEqual(tomllib.loads(merged)['notes'], tomllib.loads(existing)['notes'])
 
     def test_quoted_managed_key_is_rejected(self) -> None:
         with self.assertRaisesRegex(RoutingConfigError, "managed key"):

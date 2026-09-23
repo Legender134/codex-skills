@@ -117,8 +117,9 @@ child cap. No API request or paid model probe is launched by this package.
 
 ## Recovery
 
-Each apply prints an exact transaction manifest path under the selected Codex
-home's `backups/`. Preview it, then apply only the intended rollback:
+An apply that changes files prints an exact transaction manifest path under the
+selected Codex home's `backups/`. An unchanged apply rechecks the files and creates
+no backup or manifest. Preview the relevant transaction before rollback:
 
 ```bash
 "$ROUTING_PYTHON" -m codex_routing rollback --manifest /exact/manifest.json
@@ -136,6 +137,15 @@ on every host. It checks installed digests before restoring prior bytes; subsequ
 edits are not overwritten. Historical project manifests remain supported by the generic
 rollback engine, but must be reviewed before use because they can restore obsolete
 project overrides. This package does not automatically clean backups or projects.
+
+Replacement is atomic per file, not across the entire configuration directory.
+If installation fails, the installer attempts guarded restoration. If restoration
+is incomplete, it retains the original `manifest.pending.json` or published
+`manifest.json` and backups, records `recovery-required.json` when storage permits,
+and reports the transaction directory. Inspect the failure record and each file's
+current/prior/installed digests before choosing a repair. The files may be in mixed
+states; do not blindly rerun installation or rollback, or delete the evidence.
+The failure record itself is not a rollback manifest.
 
 ## Resolve a same-name global agent conflict
 

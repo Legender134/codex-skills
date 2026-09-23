@@ -31,10 +31,10 @@ Read [references/repository-contract.md](references/repository-contract.md) when
 
 Before pushing to a remote, opening or updating a pull/merge request, requesting remote review, or handing work to another person for integration, read [references/submission-checklist.md](references/submission-checklist.md), then:
 
-1. Derive exact candidate paths and deliverables from the requested outcome.
-2. Inspect `git status` and the name-status, stat, and full branch diff from the recorded baseline through `HEAD`, including relevant uncommitted changes.
-3. Select the smallest coherent task-complete diff. Leave unrelated user work, abandoned alternatives, experiments, generated evidence, broad refactors, generic frameworks, and unnecessary tests or documentation out of the candidate.
-4. Preserve unselected local work rather than staging, committing, overwriting, or deleting it without authorization.
+1. Identify the candidate, target remote/branch, and any PR/MR target base.
+2. Inspect status, name-status, stat, and full diffs from the task baseline, including relevant uncommitted changes. Separately verify the remote state and every outgoing commit, including those predating the task, plus the actual PR/MR diff; the task baseline alone is insufficient.
+3. Select the smallest coherent task-complete diff. Leave unrelated user work, abandoned alternatives, experiments, generated evidence, broad refactors, generic frameworks, and unnecessary deliverables out of the candidate.
+4. Preserve unselected work. If unrelated outgoing commits exist, prepare an isolated candidate without rewriting user history; do not publish them merely because they share the branch.
 
 Tests establish behavior only. Passing tests or staying within one directory never proves that every changed file belongs in the submission.
 

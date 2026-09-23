@@ -4,9 +4,11 @@ Use this for review, completion, and submission preparation. Submission is a ver
 
 ## Inspect the complete change
 
-- Select and name the evidence-backed base; inspect full status and the complete diff against it.
+- Record the task baseline, exact candidate, target remote/branch, and PR/MR base when applicable. Inspect full status and the task-baseline diff.
+- Verify the target remote ref against fresh evidence; do not assume a cached tracking ref is current. Inspect every commit the push would publish, including commits already present at task start, and the actual proposed PR/MR diff against its target base. These can differ from the task-baseline diff.
 - Inspect the complete tracked diff. Inventory untracked paths and their ownership; inspect the contents of submission candidates and files needed to assess the change. Unrelated datasets, logs, and generated artifacts need only a path-level inventory unless evidence makes their contents relevant.
 - Distinguish the whole worktree from the exact submission candidate; local exploratory work may remain unselected.
+- If unrelated outgoing commits are present, isolate the task-complete candidate without rewriting or discarding user history. For multiple remotes, verify each destination and its intended content separately.
 - Check for secrets, credentials, machine-specific paths, dead code, duplicate or competing implementations, broad formatting churn, and abandoned artifacts.
 - Confirm each file has a repository- and task-based purpose; treat line/file/test ratios only as anomaly signals.
 

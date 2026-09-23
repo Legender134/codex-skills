@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+import math
 import re
 import tomllib
 from dataclasses import dataclass
@@ -73,7 +74,7 @@ def merge_global_config(existing: str, policy: GlobalPolicy) -> str:
 
     merged = replace_or_insert_owned_assignments(existing, policy, locations)
     after = _parse_toml(merged)
-    if unmanaged_view(after) != unmanaged_view(before):
+    if not _same_toml_value(unmanaged_view(after), unmanaged_view(before)):
         raise RoutingConfigError("merge changed an unmanaged setting")
     assert_managed_values(after, policy)
     return preserve_newline_style(existing, merged)
@@ -82,7 +83,11 @@ def merge_global_config(existing: str, policy: GlobalPolicy) -> str:
 def scan_simple_assignments(existing: str) -> AssignmentScan:
     """Locate editable managed assignments while rejecting ambiguous forms."""
 
-    lines = existing.splitlines(keepends=True)
+    # TOML lines end at LF/CRLF, not at Unicode separators inside strings.
+    parts = existing.split("\n")
+    lines = [part + "\n" for part in parts[:-1]]
+    if parts[-1]:
+        lines.append(parts[-1])
     scan = AssignmentScan(
         lines=lines,
         assignments={},
@@ -94,12 +99,15 @@ def scan_simple_assignments(existing: str) -> AssignmentScan:
     current_table: tuple[str, ...] | None = ()
     table_indexes: list[int] = []
     multiline_quote: str | None = None
+    container_depth = 0
 
     for line_index, line in enumerate(lines):
         raw_line = _line_body(line)
-        continued_string = multiline_quote is not None
-        multiline_quote = _next_multiline_quote(raw_line, multiline_quote)
-        if continued_string:
+        continued_value = multiline_quote is not None or container_depth > 0
+        multiline_quote, container_depth = _next_value_state(
+            raw_line, multiline_quote, container_depth
+        )
+        if continued_value:
             continue
         comment_index = _comment_index(raw_line)
         code = raw_line[:comment_index]
@@ -309,12 +317,15 @@ def _line_body(line: str) -> str:
     return line
 
 
-def _next_multiline_quote(text: str, quote: str | None) -> str | None:
-    """Track string boundaries without treating quoted examples as TOML code.
+def _next_value_state(
+    text: str, quote: str | None, depth: int
+) -> tuple[str | None, int]:
+    """Track continued values without treating their contents as statements.
 
     Single-line strings and comments cannot open a multiline string. Escapes in
     basic strings and closing runs of four or five quotes must be consumed before
-    scanning the rest of the line. tomllib still validates the complete syntax.
+    scanning the rest of the line. Brackets outside strings/comments track array
+    and inline-table nesting. tomllib still validates the complete syntax.
     """
 
     index = 0
@@ -337,8 +348,30 @@ def _next_multiline_quote(text: str, quote: str | None) -> str | None:
             quote = character * 3 if text.startswith(character * 3, index) else character
             index += len(quote)
             continue
+        elif character in "[{":
+            depth += 1
+        elif character in "]}":
+            depth -= 1
         index += 1
-    return quote if quote is not None and len(quote) == 3 else None
+    return (quote if quote is not None and len(quote) == 3 else None), depth
+
+
+def _same_toml_value(left: object, right: object) -> bool:
+    """Compare parsed values, including TOML's non-reflexive NaN floats."""
+
+    if type(left) is not type(right):
+        return False
+    if isinstance(left, dict):
+        return left.keys() == right.keys() and all(
+            _same_toml_value(value, right[key]) for key, value in left.items()
+        )
+    if isinstance(left, list):
+        return len(left) == len(right) and all(
+            _same_toml_value(a, b) for a, b in zip(left, right, strict=True)
+        )
+    if isinstance(left, float) and math.isnan(left):
+        return math.isnan(right)
+    return left == right
 
 
 def _comment_index(text: str) -> int:

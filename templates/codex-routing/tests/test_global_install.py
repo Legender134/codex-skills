@@ -217,13 +217,17 @@ class GlobalInstallTests(unittest.TestCase):
 
             self.assertEqual(list(home.iterdir()), [])
 
-    def test_windows_mount_reader_discovers_actual_drvfs_mounts(self) -> None:
-        roots = _windows_mount_roots()
+    def test_windows_mount_reader_accepts_a_c_only_wsl_layout(self) -> None:
+        mountinfo = (
+            "42 1 0:1 / / rw - ext4 /dev/root rw\n"
+            "132 82 0:70 / /mnt/c rw - 9p none rw,aname=drvfs\n"
+        )
+        with mock.patch("codex_routing.global_install.Path.read_text", return_value=mountinfo):
+            roots = _windows_mount_roots()
 
-        self.assertIn(Path("/mnt/c"), roots)
-        self.assertIn(Path("/mnt/d"), roots)
+        self.assertEqual(roots, (Path("/mnt/c"),))
 
-    def test_wsl_plan_has_sol_high_terra_luna_max_and_exact_role_templates(
+    def test_wsl_plan_has_sol_high_luna_max_and_exact_role_templates(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as raw:
@@ -576,6 +580,7 @@ class GlobalInstallTests(unittest.TestCase):
             }
             before[Path("config.toml")] = (home / "config.toml").read_bytes()
             before[Path("AGENTS.md")] = (home / "AGENTS.md").read_bytes()
+            backups_before = tuple((home / "backups").iterdir())
 
             dry_plan = plan_global_install(home, "windows", SOURCE_ROOT)
             result = install_global(home, "windows", SOURCE_ROOT, apply=True)
@@ -588,7 +593,8 @@ class GlobalInstallTests(unittest.TestCase):
 
             self.assertEqual(dry_plan.updates, ())
             self.assertTrue(result.applied)
-            self.assertIsNotNone(result.manifest_path)
+            self.assertIsNone(result.manifest_path)
+            self.assertEqual(tuple((home / "backups").iterdir()), backups_before)
             self.assertEqual(after, before)
 
     def test_identical_existing_role_file_is_a_no_op(self) -> None:

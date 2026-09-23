@@ -34,7 +34,7 @@ class FileUpdate:
 
 @dataclass(frozen=True)
 class TransactionResult:
-    manifest_path: Path
+    manifest_path: Path | None
     changed_paths: tuple[Path, ...]
 
 
@@ -113,7 +113,7 @@ def apply_transaction(
     *,
     replace: Callable[[Path, Path], None] = os.replace,
 ) -> TransactionResult:
-    """Publish complete file payloads atomically or restore all published paths."""
+    """Replace individual files atomically, with guarded recovery on failure."""
 
     normalized = _normalize_updates(updates)
 
@@ -152,6 +152,9 @@ def apply_transaction(
         (record for record in captured if record.prior != record.after),
         key=lambda record: os.fspath(record.path),
     )
+    if not changed:
+        _revalidate_updates(tuple(captured))
+        return TransactionResult(manifest_path=None, changed_paths=())
     try:
         (
             transaction_dir,
@@ -232,14 +235,36 @@ def apply_transaction(
                 )
 
         cleanup_errors: list[str] = []
-        for owned in [item.stage for item in prepared] + [pending_owned]:
+        for owned in [item.stage for item in prepared]:
             _collect_cleanup_error(owned, cleanup_errors)
-        if manifest_owned is not None:
-            _collect_cleanup_error(manifest_owned, cleanup_errors)
+        if rollback_errors:
+            # Keep the original mapping and backups when recovery is incomplete.
+            # This diagnostic is not a rollback manifest: the destinations can
+            # now contain a mixture of original, installed, and foreign bytes.
+            try:
+                _write_exclusive(
+                    transaction_dir / "recovery-required.json",
+                    _json_bytes({
+                        "schema": 1,
+                        "status": "incomplete",
+                        "original_error": _exception_text(exc),
+                        "rollback_errors": rollback_errors,
+                    }),
+                )
+                _fsync_directory(transaction_dir)
+            except Exception as evidence_exc:
+                cleanup_errors.append(
+                    "could not record recovery status: " + _exception_text(evidence_exc)
+                )
+        else:
+            _collect_cleanup_error(pending_owned, cleanup_errors)
+            if manifest_owned is not None:
+                _collect_cleanup_error(manifest_owned, cleanup_errors)
 
-        raise RoutingConfigError(
-            _failure_message(exc, rollback_errors, cleanup_errors)
-        ) from exc
+        message = _failure_message(exc, rollback_errors, cleanup_errors)
+        if rollback_errors:
+            message += f"; recovery incomplete; inspect retained evidence at {transaction_dir}"
+        raise RoutingConfigError(message) from exc
 
 
 def rollback_transaction(

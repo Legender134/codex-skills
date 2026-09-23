@@ -32,12 +32,12 @@ _GLOBAL_TEMPLATE_DIGESTS: dict[PlatformName, str] = {
     "wsl": "f4f78c2eac4e21dc1ac745ea82eb54b90452962f85d3e5fa662143f76a06706b",
 }
 _ROLE_TEMPLATE_DIGESTS: dict[str, str] = {
-    "routine_worker": "51c21e1fc820e0ea5b1f91e35ec00e5b08256ab2a0339d62896b0f4bd6e13b6a",
-    "critical_reviewer": "1545781c799b999a34135772fc884eda443dd5b9bf0fe6e52556476dd621d578",
-    "scout": "849ccb3a3dd8c111cce191597398a6da67527fc1854af53ead62a2132a174081",
-    "explorer": "b2815c97e9df121f4e69b6c3f3e0be0a8710d42f039fa62f5391fc839593a734",
-    "worker": "1901f40b5003972921a42a5f969fa0b862d4e5d4535f0dc9660fd8eaceac8bd4",
-    "reviewer": "3f6f5fd8b3d8cb5223530a19ded78fbb41bb26af4aca355fc37e5ec49d1733d6",
+    "routine_worker": "46f0aa225ac987cf4a9ac529879b75980daf22cf811a2665d39d3b6a4b868007",
+    "critical_reviewer": "6d6bf39a7e78acfba561c3129e65c99e57f6fa2606b611832bb8e28995286cc1",
+    "scout": "565b0eff73587353b5ac6d19edc6298d443a918d1081bcc04362f76dfb3dabd7",
+    "explorer": "68d94f3bb403aa5e51a5fe6b5e31c755f734177fac1e13811ee67b6544bf8c9c",
+    "worker": "06f797a2c64b6c226c98b980135e1807484231f44cbedc0a4f647549417583d8",
+    "reviewer": "4804096309600255d611df1bb735a8eee0db1764e618608b9def24379a7812aa",
 }
 _REPARSE_POINT = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
 _MOUNTINFO_DECIMAL = re.compile(r"^[0-9]+$")
@@ -153,7 +153,7 @@ def install_global(
     *,
     apply: bool = False,
 ) -> GlobalInstallPlan:
-    """Return a dry-run plan, or atomically install all global routing files."""
+    """Return a dry-run plan, or install global routing with guarded recovery."""
 
     plan = plan_global_install(codex_home, platform, source_root)
     if not apply:
