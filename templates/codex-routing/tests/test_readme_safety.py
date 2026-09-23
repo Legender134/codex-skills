@@ -16,7 +16,7 @@ APPLY_SECTIONS = (
     "Resolve a same-name global agent conflict",
 )
 ROUTING_COMMAND = re.compile(
-    r"\s-m\s+codex_routing\s+(?:install-global|install-egs|rollback)\b"
+    r"\s-m\s+codex_routing\s+(?:install-global|rollback)\b"
 )
 
 

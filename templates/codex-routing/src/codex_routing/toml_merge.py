@@ -93,9 +93,14 @@ def scan_simple_assignments(existing: str) -> AssignmentScan:
     )
     current_table: tuple[str, ...] | None = ()
     table_indexes: list[int] = []
+    multiline_quote: str | None = None
 
     for line_index, line in enumerate(lines):
         raw_line = _line_body(line)
+        continued_string = multiline_quote is not None
+        multiline_quote = _next_multiline_quote(raw_line, multiline_quote)
+        if continued_string:
+            continue
         comment_index = _comment_index(raw_line)
         code = raw_line[:comment_index]
         header = _table_header(code)
@@ -302,6 +307,38 @@ def _line_body(line: str) -> str:
     if line.endswith("\n") or line.endswith("\r"):
         return line[:-1]
     return line
+
+
+def _next_multiline_quote(text: str, quote: str | None) -> str | None:
+    """Track string boundaries without treating quoted examples as TOML code.
+
+    Single-line strings and comments cannot open a multiline string. Escapes in
+    basic strings and closing runs of four or five quotes must be consumed before
+    scanning the rest of the line. tomllib still validates the complete syntax.
+    """
+
+    index = 0
+    while index < len(text):
+        character = text[index]
+        if quote is not None:
+            if quote[0] == '"' and character == "\\":
+                index += 2
+                continue
+            if text.startswith(quote, index):
+                index += len(quote)
+                if len(quote) == 3:
+                    while index < len(text) and text[index] == quote[0]:
+                        index += 1
+                quote = None
+                continue
+        elif character == "#":
+            break
+        elif character in ('"', "'"):
+            quote = character * 3 if text.startswith(character * 3, index) else character
+            index += len(quote)
+            continue
+        index += 1
+    return quote if quote is not None and len(quote) == 3 else None
 
 
 def _comment_index(text: str) -> int:

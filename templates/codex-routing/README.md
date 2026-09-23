@@ -103,9 +103,9 @@ config into this repository.
 
 ## Global-only migration
 
-Legacy project installation and validation commands are retired and return exit
-code 2 without reading or modifying project contents, even with `--apply`. The old
-project installer and templates are no longer shipped. Existing project overrides are **not** silently
+Project installation and validation commands are not provided. Unsupported
+commands are rejected by the argument parser with exit code 2 before reading or
+modifying project contents, even with `--apply`. Existing project overrides are **not** silently
 removed. Inspect each relevant worktree and merge/remove only explicitly identified
 routing keys after preserving original bytes. Keep domain AGENTS rules, hooks,
 skills, state and all unrelated configuration.
@@ -130,8 +130,10 @@ home's `backups/`. Preview it, then apply only the intended rollback:
 "$ROUTING_PYTHON" -m codex_routing rollback --manifest /exact/manifest.json --apply
 ```
 
-Rollback checks installed digests before restoring prior bytes; subsequent edits
-are not overwritten. Historical project manifests remain supported by the generic
+Rollback accepts only a `files/<filename>` backup path within its transaction;
+Windows separators, drive-qualified paths and alternate data streams are rejected
+on every host. It checks installed digests before restoring prior bytes; subsequent
+edits are not overwritten. Historical project manifests remain supported by the generic
 rollback engine, but must be reviewed before use because they can restore obsolete
 project overrides. This package does not automatically clean backups or projects.
 
@@ -240,4 +242,4 @@ git diff --check
 ```
 
 Exit codes: 0 success; 1 invalid installed global state; 2 argument/domain errors
-(including retired project commands). Unexpected errors propagate.
+(including unsupported commands). Unexpected errors propagate.

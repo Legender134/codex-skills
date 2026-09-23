@@ -12,7 +12,7 @@ import stat
 import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Callable
 
 from codex_routing.errors import RoutingConfigError
@@ -835,16 +835,22 @@ def _is_digest(value: object) -> bool:
     )
 
 
-def _safe_backup_path(transaction_dir: Path, relative: str) -> Path:
-    pure = PurePosixPath(relative)
+def backup_path_parts(relative: str) -> tuple[str, str]:
+    """Validate the manifest's portable files/<basename> path on every host."""
+
+    parts = relative.split("/")
     if (
-        pure.is_absolute()
-        or len(pure.parts) != 2
-        or pure.parts[0] != "files"
-        or ".." in pure.parts
+        len(parts) != 2
+        or parts[0] != "files"
+        or parts[1] in {"", ".", ".."}
+        or any(character in relative for character in ("\\", ":", "\x00"))
     ):
         raise RoutingConfigError("manifest backup path escapes its transaction")
-    backup = transaction_dir.joinpath(*pure.parts)
+    return parts[0], parts[1]
+
+
+def _safe_backup_path(transaction_dir: Path, relative: str) -> Path:
+    backup = transaction_dir.joinpath(*backup_path_parts(relative))
     _capture_parent(backup.parent)
     return backup
 

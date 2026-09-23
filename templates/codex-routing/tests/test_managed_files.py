@@ -15,6 +15,7 @@ from codex_routing.managed_files import (
     merge_managed_block,
     rollback_transaction,
 )
+from codex_routing.validate import plan_rollback
 
 
 BEGIN = b"<!-- BEGIN CODEX ROUTING -->"
@@ -24,6 +25,47 @@ END = b"<!-- END CODEX ROUTING -->"
 class ManagedFilesTests(unittest.TestCase):
     def assert_no_temporary_files(self, root: Path) -> None:
         self.assertEqual(list(root.rglob("*.tmp")), [])
+
+    def test_rollback_rejects_cross_platform_backup_paths_before_writes(self) -> None:
+        paths = (
+            r"files/..\..\outside.bak",
+            r"files/C:\outside.bak",
+            r"files/C:outside.bak",
+            r"files/\outside.bak",
+            r"files/\\server\share\outside.bak",
+            "files/../outside.bak",
+            "/files/0000.bak",
+            "files/0000.bak:stream",
+            "files/0000.bak\x00",
+            "files/",
+            "files/.",
+            "files/..",
+        )
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            destination = root / "config.toml"
+            destination.write_bytes(b"before\n")
+            result = apply_transaction(
+                (FileUpdate(destination, b"installed\n"),), root / "backups"
+            )
+            manifest = json.loads(result.manifest_path.read_bytes())
+            original = result.manifest_path.read_bytes()
+            for relative in paths:
+                with self.subTest(path=relative):
+                    manifest["files"][0]["backup_path"] = relative
+                    result.manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+                    with self.assertRaisesRegex(RoutingConfigError, "backup path escapes"):
+                        plan_rollback(result.manifest_path)
+                    with mock.patch("codex_routing.managed_files._prepare_stage") as stage:
+                        with self.assertRaisesRegex(RoutingConfigError, "backup path escapes"):
+                            rollback_transaction(result.manifest_path)
+                        stage.assert_not_called()
+                    self.assertEqual(destination.read_bytes(), b"installed\n")
+                    self.assert_no_temporary_files(root)
+            result.manifest_path.write_bytes(original)
+            self.assertEqual(plan_rollback(result.manifest_path).destinations, (destination,))
+            rollback_transaction(result.manifest_path)
+            self.assertEqual(destination.read_bytes(), b"before\n")
 
     def test_second_publish_failure_restores_first_file(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

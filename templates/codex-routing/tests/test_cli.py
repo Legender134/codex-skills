@@ -19,9 +19,7 @@ COMMANDS = (
     "check-source",
     "plan-global",
     "install-global",
-    "install-egs",
     "validate-global",
-    "validate-egs",
     "rollback",
 )
 
@@ -320,20 +318,23 @@ class CliTests(unittest.TestCase):
             ):
                 main(["check-source", "--source-root", str(SOURCE_ROOT)])
 
-    def test_retired_project_commands_never_touch_repositories(self) -> None:
+    def test_unsupported_project_commands_never_touch_repositories(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             workspace = Path(raw)
-            repo = init_repo(workspace, "preprocess-cli")
+            repo = init_repo(workspace, "sample-project")
             (repo / "AGENTS.md").write_text("User domain rules")
             (repo / ".codex").mkdir()
             config = repo / ".codex/config.toml"
             config.write_text('[hooks]\nkeep = true\n')
             before = {str(p.relative_to(workspace)): p.read_bytes() for p in workspace.rglob("*") if p.is_file()}
-            for arguments in (["install-egs"], ["install-egs", "--apply"], ["validate-egs"]):
-                code, stdout, stderr = run_main([*arguments, "--workspace", str(workspace), "--source-root", str(SOURCE_ROOT)])
-                self.assertEqual(code, 2)
-                self.assertEqual(stdout, "")
-                self.assertIn("project routing is retired", stderr)
+            for arguments in (["install-project"], ["install-project", "--apply"], ["validate-project"]):
+                stdout, stderr = io.StringIO(), io.StringIO()
+                with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                    with self.assertRaises(SystemExit) as raised:
+                        main([*arguments, "--workspace", str(workspace), "--source-root", str(SOURCE_ROOT)])
+                self.assertEqual(raised.exception.code, 2)
+                self.assertEqual(stdout.getvalue(), "")
+                self.assertIn("invalid choice", stderr.getvalue())
                 self.assertEqual(before, {str(p.relative_to(workspace)): p.read_bytes() for p in workspace.rglob("*") if p.is_file()})
 
     def test_rollback_parses_manifest_dry_run_and_applies_only_with_apply(self) -> None:

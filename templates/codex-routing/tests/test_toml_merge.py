@@ -156,6 +156,54 @@ class TomlMergeTests(unittest.TestCase):
         with self.assertRaisesRegex(RoutingConfigError, "managed key"):
             merge_global_config('model = "a"\nmodel = "b"\n', GLOBAL_POLICIES["wsl"])
 
+    def test_unmanaged_multiline_examples_are_preserved(self) -> None:
+        for quote in ('"""', "'''"):
+            for newline in ("\n", "\r\n"):
+                for table in ("", "[agents]\n"):
+                    with self.subTest(quote=quote, newline=newline, table=table):
+                        notes = (
+                            f"notes = {quote}\n"
+                            'model = "example-model"\n'
+                            "[agents]\n"
+                            "enabled = false\n"
+                            "max_concurrent_threads_per_session = 99\n"
+                            f"{quote}\n"
+                        ).replace("\n", newline)
+                        existing = table.replace("\n", newline) + notes
+                        merged = merge_global_config(existing, GLOBAL_POLICIES["wsl"])
+                        parsed = tomllib.loads(merged)
+                        container = parsed["agents"] if table else parsed
+                        before = tomllib.loads(existing)
+                        expected = before["agents"] if table else before
+                        self.assertEqual(container["notes"], expected["notes"])
+                        self.assertIn(notes, merged)
+                        self.assertEqual(parsed["model"], "gpt-6-sol")
+                        self.assertEqual(parsed["agents"]["max_concurrent_threads_per_session"], 2)
+                        self.assertEqual(merge_global_config(merged, GLOBAL_POLICIES["wsl"]), merged)
+
+    def test_multiline_quote_boundaries_do_not_hide_following_settings(self) -> None:
+        cases = (
+            '# Ignore a commented delimiter: """\nnotes = "plain"\n',
+            "notes = '\"\"\" is literal text'\n",
+            'notes = "\'\'\' is literal text"\n',
+            'notes = """same line"""\n',
+            "notes = '''same line'''\n",
+            'notes = """\nmodel = "example"\nend""""\n',
+            "notes = '''\n[agents]\nend'''''\n",
+            'notes = """escaped \\"""\nmodel = "example"\nend"""\n',
+            'notes = ["""\n[agents]\n""", """\nmodel = "example"\n"""]\n',
+        )
+        for notes in cases:
+            with self.subTest(notes=notes):
+                existing = notes + 'model = "old"\n[agents]\nenabled = false\n'
+                before = tomllib.loads(existing)
+                merged = merge_global_config(existing, GLOBAL_POLICIES["wsl"])
+                after = tomllib.loads(merged)
+                self.assertEqual(after["notes"], before["notes"])
+                self.assertIn(notes, merged)
+                self.assertEqual(after["model"], "gpt-6-sol")
+                self.assertIs(after["agents"]["enabled"], True)
+
     def test_invalid_toml_is_rejected(self) -> None:
         with self.assertRaisesRegex(RoutingConfigError, "invalid TOML"):
             merge_global_config('model = "unterminated\n', GLOBAL_POLICIES["wsl"])

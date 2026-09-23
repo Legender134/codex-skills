@@ -7,9 +7,10 @@ import json
 import os
 import stat
 from dataclasses import dataclass
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 from codex_routing.errors import RoutingConfigError
+from codex_routing.managed_files import backup_path_parts
 from codex_routing.templates import load_template
 
 
@@ -179,7 +180,7 @@ def _validate_manifest_record(record: dict[str, object]) -> None:
     if prior_exists:
         if not _is_digest(prior_digest) or not isinstance(backup_path, str):
             raise RoutingConfigError("manifest prior backup is incomplete")
-        _validate_backup_path(backup_path)
+        backup_path_parts(backup_path)
     elif prior_digest is not None or backup_path is not None:
         raise RoutingConfigError("new-file manifest entry has a prior backup")
 
@@ -192,17 +193,6 @@ def _manifest_destination(record: dict[str, object]) -> Path:
     if not path.is_absolute():
         raise RoutingConfigError("manifest destination path must be absolute")
     return Path(os.path.abspath(os.fspath(path)))
-
-
-def _validate_backup_path(value: str) -> None:
-    path = PurePosixPath(value)
-    if (
-        path.is_absolute()
-        or len(path.parts) != 2
-        or path.parts[0] != "files"
-        or ".." in path.parts
-    ):
-        raise RoutingConfigError("manifest backup path escapes its transaction")
 
 
 def _is_digest(value: object) -> bool:

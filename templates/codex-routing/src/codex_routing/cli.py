@@ -45,17 +45,8 @@ def build_parser() -> argparse.ArgumentParser:
         "install a global routing configuration",
         include_apply=True,
     )
-    _add_workspace_command(
-        commands,
-        "install-egs",
-        "retired: use global routing; leaves projects untouched",
-        include_apply=True,
-    )
     _add_global_command(
         commands, "validate-global", "validate a global routing configuration"
-    )
-    _add_workspace_command(
-        commands, "validate-egs", "retired: inspect project overrides separately"
     )
 
     rollback = commands.add_parser(
@@ -103,11 +94,6 @@ def dispatch(args: argparse.Namespace) -> int:
         )
         _print_global_plan(plan, status="applied" if plan.applied else "dry-run")
         return 0
-    if args.command in {"install-egs", "validate-egs"}:
-        raise RoutingConfigError(
-            "project routing is retired; use install-global/validate-global. "
-            "Existing project instructions, hooks and overrides were not modified."
-        )
     if args.command == "validate-global":
         _check_source(args.source_root)
         report = validate_global_install(
@@ -143,22 +129,6 @@ def _add_global_command(
     parser = commands.add_parser(name, help=help_text)
     parser.add_argument("--target", choices=_PLATFORMS, required=True)
     parser.add_argument("--codex-home", type=Path, required=True, metavar="PATH")
-    _add_source_root(parser)
-    if include_apply:
-        parser.add_argument(
-            "--apply", action="store_true", help="perform the planned installation"
-        )
-
-
-def _add_workspace_command(
-    commands: argparse._SubParsersAction[argparse.ArgumentParser],
-    name: str,
-    help_text: str,
-    *,
-    include_apply: bool = False,
-) -> None:
-    parser = commands.add_parser(name, help=help_text)
-    parser.add_argument("--workspace", type=Path, required=True, metavar="PATH")
     _add_source_root(parser)
     if include_apply:
         parser.add_argument(

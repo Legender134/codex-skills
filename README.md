@@ -19,8 +19,8 @@ The configuration uses GPT-6 Sol High for the primary and unspecified children.
 Named routes use Luna Low for read-only scout supervision, Luna High for exploration
 and routine edits, Luna Max for bounded implementation, Sol High for ordinary review,
 and Astra High for critical review. The child cap is two per primary session.
-Routing is global-only; the retired EGS project installer never writes project
-overrides. Preserve existing provider/login, project domain rules and unrelated
+Routing is global-only; this package provides no project installation commands.
+Preserve existing provider/login, project domain rules and unrelated
 configuration. See the routing package README for safe installation and rollback.
 
 ## Install with Codex
@@ -55,11 +55,11 @@ Clone this repository, then copy or link the selected directory from `skills/` i
 
 For `codex-sync-skills`, install the authoritative copy on Windows first. Run its utility inside the intended WSL distribution in preview mode, review portability, and explicitly approve any links before applying them.
 
-## Optional global repository rules
+## Global instructions source
 
-[`agents/repository-aligned-development/AGENTS.md`](agents/repository-aligned-development/AGENTS.md) is a portable companion template for Codex's global instructions. Merge its contents into `~/.codex/AGENTS.md` when you want the repository-aligned development rules to apply across projects. Preserve any existing environment- or project-specific instructions; do not replace the whole file blindly.
+The [routing package](templates/codex-routing/README.md) maintains the Windows and WSL global instructions, including repository development and submission rules. Install the template for the owning environment through that package; do not append a second copy of repository rules. Existing unrelated global instructions remain preserved by its managed-block merge.
 
-The similarly named `skills/repository-aligned-development/agents/openai.yaml` is different: it contains UI metadata and the default prompt for the Skill. It is installed with the Skill and is not a global agent configuration file.
+The Skill's `skills/repository-aligned-development/agents/openai.yaml` contains UI metadata and its default prompt. It is installed with the Skill and is not a global agent configuration file.
 
 ## Verify
 

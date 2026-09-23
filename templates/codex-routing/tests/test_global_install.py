@@ -62,7 +62,7 @@ class GlobalInstallTests(unittest.TestCase):
                 with self.assertRaisesRegex(RoutingConfigError, "target"):
                     call()
 
-    def test_windows_plan_preserves_foreign_config_and_sets_cap_one(self) -> None:
+    def test_windows_plan_preserves_foreign_config_and_sets_cap_two(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             home = self.make_home(raw, target="windows")
             (home / "config.toml").write_text(
