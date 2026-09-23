@@ -28,13 +28,13 @@ _ROLE_NAMES = ("scout", "explorer", "worker", "reviewer", "routine_worker", "cri
 # than trusting a caller-supplied source root. Update them only with an approved
 # template change.
 _GLOBAL_TEMPLATE_DIGESTS: dict[PlatformName, str] = {
-    "windows": "d704ca463dfbb5dd70fac40181bad5d2461aab857f8b55ee988e950bfa6bcd1f",
-    "wsl": "efb3ce759ffe063f5e11e537722de0190d82b73b74557ca85b5d5a3929bb4970",
+    "windows": "277cf49f395b800bfe94368d32a7863d12a32cc535bb7b8671035537740a6eae",
+    "wsl": "6ec1d376ff5606f89fe69b1aeea13d4f8f6f32f88c013ba697c2ab4a2c4c9b98",
 }
 _ROLE_TEMPLATE_DIGESTS: dict[str, str] = {
     "routine_worker": "3ca445b06ec2d29e0fa0d7af9fe96eeb23ac306993d55539f95756b8ee7b6e71",
     "critical_reviewer": "60f571b2dba957aa7f4fb661995ba0e3a60385a47a7d447f03ccc365d77f52af",
-    "scout": "868ad6866055f7268c9f7487f88fe51824c03ea0c46e6dbbb84bb11e80e5edba",
+    "scout": "956e026b01bac79abd7b854ca81acb7c7222d25b4ee6ca9a76336cbee297c98e",
     "explorer": "b2815c97e9df121f4e69b6c3f3e0be0a8710d42f039fa62f5391fc839593a734",
     "worker": "3bb2030b40c09e6cc2fd1c3c516b9cc315cedcbc8a432d732cf070d9e6cbd92d",
     "reviewer": "25bc68ee68b310ade6318c9c4f9f8df693f160eba03c8cef2b2a2d71377eb751",

@@ -25,6 +25,13 @@ output. Report concise changes plus periodic heartbeats at the agreed cadence,
 not repeated full logs. Estimates such as ETA must state their basis; do not
 invent progress percentages or infer success from GPU activity or a file alone.
 
+For a sole assigned long-running job, own routine read-only monitoring and send
+updates proactively at the agreed cadence through supported agent messaging;
+send stage changes, completion, and anomalies immediately. This lets the primary
+avoid duplicate frequent polling while retaining final evidence verification.
+If messaging or persistent supervision stops, explicitly hand back the pending
+checks; never imply the primary will be awakened automatically without support.
+
 Use the product's supported wait/recurring-monitoring mechanism while assigned.
 Unchanged state alone is not a blocker or permission to stop supervision. Raise
 errors, OOM, non-finite metrics, unexpected exits, missing evidence, or suspected
