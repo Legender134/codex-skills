@@ -21,7 +21,7 @@ _EXPECTED_TEMPLATE_DIGESTS: dict[str, str] = {
     "agents/reviewer.toml": "25bc68ee68b310ade6318c9c4f9f8df693f160eba03c8cef2b2a2d71377eb751",
     "agents/scout.toml": "868ad6866055f7268c9f7487f88fe51824c03ea0c46e6dbbb84bb11e80e5edba",
     "agents/worker.toml": "3bb2030b40c09e6cc2fd1c3c516b9cc315cedcbc8a432d732cf070d9e6cbd92d",
-    "global/windows-AGENTS.md": "9898136185b1369d4e91b62fd50f9be2eabf39d376a5c6e688e6146a4a158b08",
+    "global/windows-AGENTS.md": "d704ca463dfbb5dd70fac40181bad5d2461aab857f8b55ee988e950bfa6bcd1f",
     "global/wsl-AGENTS.md": "efb3ce759ffe063f5e11e537722de0190d82b73b74557ca85b5d5a3929bb4970",
 }
 _EXPECTED_DIRECTORIES = {"", "agents", "global"}

@@ -57,6 +57,14 @@ class PolicyTemplateTests(unittest.TestCase):
             self.assertIn("Report the classification inventory", instructions)
             self.assertIn("explicit authorization", instructions)
 
+    def test_global_agents_share_platform_independent_rules(self) -> None:
+        marker = "Delegated work must return distilled evidence:"
+        windows, wsl = (
+            load_template(ROOT, f"global/{platform}-AGENTS.md").decode("utf-8")
+            for platform in ("windows", "wsl")
+        )
+        self.assertEqual(windows.split(marker, 1)[1], wsl.split(marker, 1)[1])
+
     def test_role_templates_have_required_metadata(self) -> None:
         for name in AGENT_POLICIES:
             template_path = f"agents/{name}.toml"
