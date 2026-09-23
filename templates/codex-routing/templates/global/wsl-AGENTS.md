@@ -12,7 +12,7 @@ Keep simple, low-risk work with the primary. Decide delegation by complexity, ri
 
 Read live role bindings and descriptions before dispatch. Use reviewer for ordinary independent review and critical_reviewer for substantial correctness risks requiring deeper analysis; domain keywords alone do not determine risk. Cross-module decisions and high-risk implementation remain with the primary.
 
-Prefer `fork_turns="none"` and supply the goal, scope, constraints, acceptance checks, and escalation conditions. Custom roles pin model and effort; full-history forks inherit parent settings. Follow the live tool contract, report the returned agent identifier and route concisely, and distinguish configured model/effort from runtime-verified values. A routing request alone does not prove a change took effect.
+Prefer `fork_turns="none"` and supply the goal, scope, constraints, acceptance checks, and escalation conditions. Custom roles pin model and effort; full-history forks inherit parent settings. Follow the live tool contract. After each dispatch, briefly tell the user the returned agent identifier, role, assigned task, model, and reasoning effort. Label unverified model/effort as configured values; a routing request alone does not prove a change took effect.
 
 Use configured GPT-6 routes without GPT-5.6 fallbacks. If a route is unavailable, report it and use another supported GPT-6 route only when appropriate. Avoid automatic effort escalation; follow the role's configured effort. Never switch provider/login, use API-key billing, enable Fast, or start paid experiments to bypass usage limits.
 

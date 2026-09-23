@@ -11,7 +11,7 @@ Read this before designing, implementing, or reviewing work that requires the fu
 5. Applicable organization policy.
 6. General engineering practice.
 
-Higher evidence controls. Apply compatible lower-level guidance. If a conflict materially changes scope, architecture, dependencies, or delivery risk, cite the evidence and ask the user; otherwise choose the conservative repository-aligned interpretation.
+Higher evidence controls. Apply compatible lower-level guidance and continue within existing authorization when that priority resolves a conflict. Ask the user, citing the evidence, only for an unresolved material conflict or a change beyond the authorized scope or risk; otherwise choose the conservative repository-aligned interpretation.
 
 ## Read-only discovery
 

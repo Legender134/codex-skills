@@ -137,6 +137,141 @@ class ManagedFilesTests(unittest.TestCase):
                 self.assertEqual(second.read_bytes(), b"before-b")
                 self.assert_no_temporary_files(root)
 
+    def test_automatic_recovery_preserves_same_digest_foreign_replacement(self) -> None:
+        cases = ((True, "between-records"), (False, "between-records"), (True, "staging"))
+        for prior_exists, timing in cases:
+            with self.subTest(prior_exists=prior_exists, timing=timing), tempfile.TemporaryDirectory() as raw:
+                root = Path(raw)
+                first, second = root / "a.toml", root / "b.toml"
+                if prior_exists:
+                    first.write_bytes(b"before-a")
+                second.write_bytes(b"before-b")
+                module = __import__("codex_routing.managed_files", fromlist=["_prepare_stage"])
+                real_prepare = module._prepare_stage
+                foreign_state = None
+
+                def rebind_first() -> None:
+                    nonlocal foreign_state
+                    foreign = root / "foreign.toml"
+                    foreign.write_bytes(b"installed-a")
+                    foreign.replace(first)
+                    foreign_state = module._stat_identity(first.stat())
+
+                def race_after_staging(path: Path, payload: bytes, purpose: str):
+                    stage = real_prepare(path, payload, purpose)
+                    if timing == "staging" and path == first and purpose == "rollback":
+                        rebind_first()
+                    return stage
+
+                def fail_manifest(source: Path, destination: Path) -> None:
+                    if destination.name == "manifest.json":
+                        raise OSError("injected manifest failure")
+                    source.replace(destination)
+                    if timing == "between-records" and destination == second and "rollback" in source.name:
+                        rebind_first()
+
+                with mock.patch.object(module, "_prepare_stage", side_effect=race_after_staging):
+                    with self.assertRaisesRegex(RoutingConfigError, "recovery incomplete"):
+                        apply_transaction(
+                            (FileUpdate(first, b"installed-a"), FileUpdate(second, b"installed-b")),
+                            root / "backups", replace=fail_manifest,
+                        )
+
+                self.assertEqual(first.read_bytes(), b"installed-a")
+                self.assertEqual(module._stat_identity(first.stat()), foreign_state)
+                self.assertEqual(second.read_bytes(), b"before-b")
+                manifest = next((root / "backups").rglob("manifest.pending.json"))
+                self.assertEqual(plan_rollback(manifest).destinations, (first, second))
+                self.assertTrue((manifest.parent / "recovery-required.json").is_file())
+                self.assert_no_temporary_files(root)
+
+    @unittest.skipIf(os.name == "nt", "directory permission identity is POSIX-specific")
+    def test_automatic_recovery_rechecks_parent_after_staging(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            parent = root / "owned"
+            parent.mkdir(mode=0o755)
+            destination = parent / "config.toml"
+            destination.write_bytes(b"before")
+            module = __import__("codex_routing.managed_files", fromlist=["_prepare_stage"])
+            real_prepare = module._prepare_stage
+
+            def change_parent(path: Path, payload: bytes, purpose: str):
+                stage = real_prepare(path, payload, purpose)
+                if purpose == "rollback":
+                    parent.chmod(0o700)
+                return stage
+
+            def fail_manifest(source: Path, target: Path) -> None:
+                if target.name == "manifest.json":
+                    raise OSError("injected manifest failure")
+                source.replace(target)
+
+            with mock.patch.object(module, "_prepare_stage", side_effect=change_parent):
+                with self.assertRaisesRegex(RoutingConfigError, "parent changed during transaction"):
+                    apply_transaction(
+                        (FileUpdate(destination, b"installed"),), root / "backups",
+                        replace=fail_manifest,
+                    )
+            self.assertEqual(destination.read_bytes(), b"installed")
+            self.assertTrue(list((root / "backups").rglob("recovery-required.json")))
+            self.assert_no_temporary_files(root)
+
+    def test_automatic_recovery_validates_all_restored_results_before_removing_evidence(self) -> None:
+        for change in ("rewrite", "same-digest-rebind", "recreate", "during-cleanup"):
+            with self.subTest(change=change), tempfile.TemporaryDirectory() as raw:
+                root = Path(raw)
+                first, second = root / "a.toml", root / "b.toml"
+                first.write_bytes(b"before-a")
+                if change != "recreate":
+                    second.write_bytes(b"before-b")
+                module = __import__("codex_routing.managed_files", fromlist=["_remove_owned_stage"])
+                real_remove = module._remove_owned_stage
+                foreign = b"before-b" if change == "same-digest-rebind" else b"foreign-edit"
+                restored = False
+
+                def change_second() -> None:
+                    if change == "rewrite":
+                        second.write_bytes(foreign)
+                        return
+                    replacement = root / "foreign.toml"
+                    replacement.write_bytes(foreign)
+                    replacement.replace(second)
+
+                def fail_manifest(source: Path, target: Path) -> None:
+                    nonlocal restored
+                    if target.name == "manifest.json":
+                        raise OSError("injected manifest failure")
+                    source.replace(target)
+                    if target == first and "rollback" in source.name:
+                        restored = True
+                        if change != "during-cleanup":
+                            change_second()
+
+                def race_during_cleanup(owned) -> None:
+                    real_remove(owned)
+                    if change == "during-cleanup" and restored and "install" in owned.path.name:
+                        change_second()
+
+                with mock.patch.object(module, "_remove_owned_stage", side_effect=race_during_cleanup):
+                    with self.assertRaisesRegex(RoutingConfigError, "final recovery validation failed"):
+                        apply_transaction(
+                            (FileUpdate(first, b"installed-a"), FileUpdate(second, b"installed-b")),
+                            root / "backups", replace=fail_manifest,
+                        )
+                self.assertEqual(first.read_bytes(), b"before-a")
+                self.assertEqual(second.read_bytes(), foreign)
+                manifest = next((root / "backups").rglob("manifest.pending.json"))
+                self.assertEqual(plan_rollback(manifest).destinations, (first, second))
+                status = json.loads((manifest.parent / "recovery-required.json").read_bytes())
+                self.assertEqual(status["status"], "incomplete")
+                self.assertIn("final recovery validation failed", status["rollback_errors"][0])
+                for record in json.loads(manifest.read_bytes())["files"]:
+                    if record["prior_exists"]:
+                        backup = (manifest.parent / record["backup_path"]).read_bytes()
+                        self.assertEqual(hashlib.sha256(backup).hexdigest(), record["prior_sha256"])
+                self.assert_no_temporary_files(root)
+
     def test_recovery_status_write_failure_still_preserves_original_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)

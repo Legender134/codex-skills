@@ -68,8 +68,22 @@ export WSL_CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 "$ROUTING_PYTHON" -m codex_routing check-source --source-root "$PWD"
 ```
 
-For a Windows target, resolve its exact Codex home explicitly; do not assume the
-WSL home is shared. Windows native tooling and login stay separate. See
+For a Windows target, confirm its home in the Windows PowerShell environment
+used to launch Codex:
+
+```powershell
+if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $env:USERPROFILE '.codex' }
+```
+
+If Codex uses a launcher-specific override, use that value instead. Back in WSL,
+replace the example path below with the confirmed Windows path and convert it:
+
+```bash
+WINDOWS_CODEX_HOME="$(wslpath -u 'C:\Users\<user>\.codex')" && export WINDOWS_CODEX_HOME
+```
+
+Use this variable only with WSL Python; native Windows Python needs the original
+Windows path. Windows native tooling and login stay separate. See
 [SETUP.md](SETUP.md) for skills and environment boundaries.
 Windows-native execution rejects WSL homes reached through `\\wsl$` or
 `\\wsl.localhost`, including extended UNC paths; manage those homes inside WSL.
@@ -90,7 +104,8 @@ Windows-native execution rejects WSL homes reached through `\\wsl$` or
   --target wsl --codex-home "$WSL_CODEX_HOME" --source-root "$PWD"
 ```
 
-For Windows use `--target windows --codex-home <exact-Windows-Codex-home>`.
+For Windows from WSL, use the same preview, apply and validation commands with
+`--target windows --codex-home "$WINDOWS_CODEX_HOME"`.
 `plan-global` is read-only; `install-global` without `--apply` is also a preview.
 The installer validates exact approved source hashes and merges only routing-owned
 keys plus its marked AGENTS block. It preserves unrelated MCP, plugins, hooks,

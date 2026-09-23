@@ -11,6 +11,7 @@ from unittest import mock
 
 from codex_routing.cli import main
 from codex_routing.errors import RoutingConfigError
+from codex_routing.managed_files import FileUpdate, apply_transaction, rollback_transaction
 from codex_routing.validate import plan_rollback, validate_source
 
 
@@ -60,6 +61,45 @@ def init_repo(workspace: Path, name: str) -> Path:
 
 
 class CliTests(unittest.TestCase):
+    def test_rollback_reports_failure_if_a_previously_restored_path_changes(self) -> None:
+        for change in ("rewrite", "same-digest-rebind", "recreate"):
+            with self.subTest(change=change), tempfile.TemporaryDirectory() as raw:
+                root = Path(raw)
+                first, second = root / "a.toml", root / "b.toml"
+                if change != "recreate":
+                    first.write_bytes(b"before-a")
+                second.write_bytes(b"before-b")
+                result = apply_transaction(
+                    (FileUpdate(first, b"installed-a"), FileUpdate(second, b"installed-b")),
+                    root / "backups",
+                )
+                foreign = b"before-a" if change == "same-digest-rebind" else b"foreign-edit"
+
+                def change_earlier_result(source: Path, destination: Path) -> None:
+                    source.replace(destination)
+                    if destination == second and "rollback" in source.name:
+                        if change == "rewrite":
+                            first.write_bytes(foreign)
+                        else:
+                            replacement = root / "foreign.toml"
+                            replacement.write_bytes(foreign)
+                            replacement.replace(first)
+
+                def rollback_with_race(manifest: Path):
+                    return rollback_transaction(manifest, replace=change_earlier_result)
+
+                with mock.patch("codex_routing.cli.rollback_transaction", side_effect=rollback_with_race):
+                    code, stdout, stderr = run_main(
+                        ["rollback", "--manifest", str(result.manifest_path), "--apply"]
+                    )
+                self.assertEqual(code, 2)
+                self.assertNotIn("applied rollback", stdout)
+                self.assertIn("error:", stderr)
+                self.assertEqual(first.read_bytes(), foreign)
+                self.assertEqual(second.read_bytes(), b"installed-b")
+                self.assertTrue(result.manifest_path.is_file())
+                self.assertEqual(list(root.rglob("*.tmp")), [])
+
     def make_home(self, raw: str) -> Path:
         home = Path(raw) / ".codex"
         home.mkdir()

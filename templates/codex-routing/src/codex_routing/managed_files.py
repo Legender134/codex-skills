@@ -216,27 +216,38 @@ def apply_transaction(
         )
     except Exception as exc:
         rollback_errors: list[str] = []
-        installed: list[_CapturedUpdate] = []
+        installed: list[_PreparedUpdate] = []
         for record in attempted:
             try:
                 if _apply_result_was_published(record):
-                    installed.append(record.captured)
+                    installed.append(record)
             except Exception as inspection_exc:
                 rollback_errors.append(
                     f"{record.captured.path}: rollback inspection failed: "
                     f"{_exception_text(inspection_exc)}"
                 )
+        restored: list[tuple[_CapturedUpdate, _OwnedStage | None]] = []
         for record in reversed(installed):
             try:
-                _restore_captured(record, replace)
+                restored.append((record.captured, _restore_captured(record, replace)))
             except Exception as rollback_exc:
                 rollback_errors.append(
-                    f"{record.path}: {_exception_text(rollback_exc)}"
+                    f"{record.captured.path}: {_exception_text(rollback_exc)}"
                 )
 
         cleanup_errors: list[str] = []
         for owned in [item.stage for item in prepared]:
             _collect_cleanup_error(owned, cleanup_errors)
+        for captured_record, restored_stage in restored:
+            try:
+                _revalidate_destination(
+                    captured_record.path, captured_record.parent_state, restored_stage
+                )
+            except Exception as final_exc:
+                rollback_errors.append(
+                    f"{captured_record.path}: final recovery validation failed: "
+                    f"{_exception_text(final_exc)}"
+                )
         if rollback_errors:
             # Keep the original mapping and backups when recovery is incomplete.
             # This diagnostic is not a rollback manifest: the destinations can
@@ -357,6 +368,10 @@ def rollback_transaction(
                     os.unlink(record.path)
                     _assert_removed(record.path)
                 _fsync_directory(record.path.parent)
+            for record in records:
+                _revalidate_destination(
+                    record.path, record.parent_state, prepared.get(record.path)
+                )
         except Exception as exc:
             compensation_errors: list[str] = []
             restored: list[_RollbackRecord] = []
@@ -581,28 +596,36 @@ def _apply_result_was_published(record: _PreparedUpdate) -> bool:
     raise RoutingConfigError("attempted destination digest is ambiguous")
 
 
-def _restore_captured(
-    record: _CapturedUpdate, replace: Callable[[Path, Path], None]
+def _revalidate_destination(
+    path: Path, parent_state: tuple[int, int, int, int], stage: _OwnedStage | None
 ) -> None:
-    parent = _capture_parent(record.path.parent)
-    if _stat_identity(parent) != record.parent_state:
-        raise RoutingConfigError("parent identity no longer matches")
-    current = _capture_regular_file(record.path, "installed destination")
-    if _digest(_read_captured_regular(record.path, current)) != record.installed_digest:
-        raise RoutingConfigError("installed digest no longer matches")
+    parent = _capture_parent(path.parent)
+    if _stat_identity(parent) != parent_state:
+        raise RoutingConfigError(f"destination parent changed during transaction: {path.parent}")
+    if stage is None:
+        _assert_removed(path)
+    else:
+        _assert_published(stage, path)
+
+
+def _restore_captured(
+    prepared: _PreparedUpdate, replace: Callable[[Path, Path], None]
+) -> _OwnedStage | None:
+    record = prepared.captured
+    _revalidate_destination(record.path, record.parent_state, prepared.stage)
     if record.prior is None:
         os.unlink(record.path)
         _fsync_directory(record.path.parent)
-        return
+        _revalidate_destination(record.path, record.parent_state, None)
+        return None
     stage = _prepare_stage(record.path, record.prior, "rollback")
     try:
-        current = _capture_regular_file(record.path, "installed destination")
-        if _digest(_read_captured_regular(record.path, current)) != record.installed_digest:
-            raise RoutingConfigError("installed digest no longer matches")
+        _revalidate_destination(record.path, record.parent_state, prepared.stage)
         _assert_owned_payload(stage, "publication")
         replace(stage.path, record.path)
-        _assert_published(stage, record.path)
         _fsync_directory(record.path.parent)
+        _revalidate_destination(record.path, record.parent_state, stage)
+        return stage
     finally:
         _remove_owned_stage(stage)
 
