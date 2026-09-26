@@ -4,14 +4,9 @@ Read this before designing, implementing, or reviewing work that requires the fu
 
 ## Evidence precedence
 
-1. Explicit user instruction for the current task.
-2. Authoritative repository instructions, including scoped or nested rules.
-3. Build, dependency, test, format, lint, and CI configuration.
-4. Analogous nearby code/tests and recent history.
-5. Applicable organization policy.
-6. General engineering practice.
+Resolve binding user, repository, and organization requirements by authority and scope, subject to controlling system and developer instructions. Do not infer an exception to a binding requirement from existing code or configuration. Ask the user, citing the sources, only for an unresolved material conflict or a change beyond the authorized scope or risk; do not assume they can waive a higher-priority requirement.
 
-Higher evidence controls. Apply compatible lower-level guidance and continue within existing authorization when that priority resolves a conflict. Ask the user, citing the evidence, only for an unresolved material conflict or a change beyond the authorized scope or risk; otherwise choose the conservative repository-aligned interpretation.
+Within those requirements, choose implementation conventions using build, dependency, test, format, lint, and CI configuration, then analogous nearby code/tests and recent history, then general engineering practice. Apply compatible guidance and continue within existing authorization when authority and scope resolve a conflict.
 
 ## Read-only discovery
 
@@ -19,13 +14,13 @@ Inspect without changing state:
 
 - repository and relevant subproject roots;
 - current branch, configured upstream, candidate base, and merge base;
-- tracked, modified, and untracked state;
+- tracked, staged, unstaged, and untracked state, retaining the distinct index and worktree versions of pre-existing changes;
 - root and nested instruction files governing likely paths;
 - build, dependency, test, format, lint, and CI configuration;
 - closest analogous code, tests, interfaces, and naming;
 - relevant recent history and change granularity.
 
-Treat all pre-existing changes as user-owned. Do not fetch, pull, switch branches, reset, clean, or stash merely to improve discovery.
+Treat all pre-existing changes as user-owned. Query remote refs without updating local refs when that supplies the needed evidence. If an authorized comparison needs missing commit objects, a targeted fetch is appropriate; record the resolved ref and commit. Do not pull, switch branches, reset, clean, or stash merely to improve discovery.
 
 ## Full contract template
 
@@ -47,10 +42,10 @@ Expected size, file counts, or test ratios may identify anomalies; they are neve
 
 ## Special cases
 
-- **No upstream:** select an evidence-backed local mainline/history baseline, label it lower confidence, and ask if ambiguity changes the solution.
+- **No upstream:** retain an explicitly supplied and verified baseline. If the intended base is unknown, select an evidence-backed local mainline/history fallback, label remaining uncertainty, and ask only if that ambiguity changes the solution. Missing upstream alone does not lower confidence in an established base.
 - **New or empty repository:** use minimal general conventions and surface consequential choices; do not invent process scaffolding.
 - **Nested rules:** apply each instruction only within its scope; the most specific applicable repository rule governs within the repository-instruction level.
-- **Dirty worktree:** preserve unrelated tracked and untracked changes; isolate planned paths and stop if required edits materially overlap user work.
+- **Dirty worktree:** preserve unrelated tracked and untracked changes. A request to continue or repair existing WIP can authorize edits in the same paths; inspect and retain that work's intent rather than treating overlap alone as a stop signal. Pause only affected edits when ownership, intended behavior, authorization, or a safe way to preserve existing work is unclear; continue independent authorized work.
 - **Experiments:** exploration may create prototypes, alternatives, diagnostics, notes, or temporary files. Keep them identifiable and isolated when practical. At submission, select or migrate only the required result; preserve other local work unless cleanup is authorized.
 - **Material conflict:** resolve or escalate it, then state the contract before implementation. Conflict analysis is not a substitute for the contract.
 

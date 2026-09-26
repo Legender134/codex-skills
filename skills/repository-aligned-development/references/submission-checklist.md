@@ -4,9 +4,10 @@ Use this for review, completion, and submission preparation. Submission is a ver
 
 ## Inspect the complete change
 
-- Record the task baseline, exact candidate, target remote/branch, and PR/MR base when applicable. Inspect full status and the task-baseline diff.
-- Verify the target remote ref against fresh evidence; do not assume a cached tracking ref is current. Inspect every commit the push would publish, including commits already present at task start, and the actual proposed PR/MR diff against its target base. These can differ from the task-baseline diff.
-- Inspect the complete tracked diff. Inventory untracked paths and their ownership; inspect the contents of submission candidates and files needed to assess the change. Unrelated datasets, logs, and generated artifacts need only a path-level inventory unless evidence makes their contents relevant.
+- Record the task baseline and exact candidate, plus integration base, destination remote/branch, and PR/MR base when applicable. For local-only delivery, mark remote checks inapplicable; do not invent a destination or require remote access.
+- Inspect the actual deliverable against the integration base, including earlier commits or dependencies it carries. For a local patch or bundle, verify the reconstructed candidate on that base in an isolated workspace when needed; tests in the source worktree do not establish applicability or completeness for a different receiving base.
+- For remote publication, verify the target remote ref against fresh evidence; do not assume a cached tracking ref is current. A remote-ref query establishes identity, not commit contents; if objects needed for comparison are missing, obtain them within existing authorization before claiming the comparison is complete. Inspect every commit the push would publish, including commits already present at task start, and the actual proposed PR/MR diff against its target base when applicable. These can differ from the task-baseline diff.
+- Inspect full status and the task-baseline diff, plus staged and unstaged diffs separately. Before committing, verify that the exact content to be recorded matches the intended candidate while preserving unrelated staged and unstaged work. Inventory untracked paths and their ownership; inspect the contents of submission candidates and files needed to assess the change. Unrelated datasets, logs, and generated artifacts need only a path-level inventory unless evidence makes their contents relevant.
 - Distinguish the whole worktree from the exact submission candidate; local exploratory work may remain unselected.
 - If unrelated outgoing commits are present, isolate the task-complete candidate without rewriting or discarding user history. For multiple remotes, verify each destination and its intended content separately.
 - Check for secrets, credentials, machine-specific paths, dead code, duplicate or competing implementations, broad formatting churn, and abandoned artifacts.
@@ -14,8 +15,9 @@ Use this for review, completion, and submission preparation. Submission is a ver
 
 ## Verify behavior and alignment
 
-- Run repository-native format, lint, unit, integration, and build checks in proportion to risk.
-- Record fresh commands, exit status, and relevant results. Never imply an unrun check passed.
+- Run repository-native format, lint, unit, integration, and build checks in proportion to risk on the final selected candidate. If it was migrated, cherry-picked, regrouped, or changed after verification, rerun affected checks in its final location; broaden them only when the changes or failures justify it. A metadata-only commit change with the same tested tree and environment does not by itself require repeating checks.
+- Ensure validation does not depend on excluded tracked, untracked, or ignored work. When that cannot be established in the development worktree, use an isolated candidate and reproduce required setup there without copying unexplained local artifacts.
+- Record the tested commit and any uncommitted candidate state, location, fresh commands, exit status, and relevant results. Never imply an unrun check passed or attribute original-worktree results to an untested candidate. Report blocked checks as validation gaps.
 - Compare the final diff with the task-local repository contract.
 - Report justified deviations, unresolved gaps, environment-dependent behavior, and any overlap with user-owned work.
 
@@ -40,4 +42,4 @@ Classify each known item as **keep**, **archive**, or **cleanup candidate**. Rep
 
 ## Authorization gate
 
-Before deletion or material overwrite/move, branch or history rewrite, commit, push, merge-request/pull-request creation, or any external mutation, check whether the user's existing authorization covers the action and exact targets. Proceed when it does; stop and ask only for missing authorization or a material change in scope or risk. If cleanup is desired but unauthorized, preserve the current work and propose a clean branch with selective migration.
+Apply the authorization categories in [SKILL.md](../SKILL.md#authorization-gates). Proceed when existing authorization covers the action and targets; ask only for missing necessary information or authorization, or a material change in scope or risk. If cleanup is desired but unauthorized, preserve the current work and propose a clean branch with selective migration.
