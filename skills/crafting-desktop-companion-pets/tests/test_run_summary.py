@@ -123,6 +123,14 @@ def internal_visual_passes() -> list[dict[str, object]]:
     ]
 
 
+def required_visual_reviews() -> list[dict[str, str]]:
+    return [{
+        "artifactPath": "qa/preview.webp",
+        "artifactSha256": "e" * 64,
+        "gate": "visual",
+    }]
+
+
 def write_bound_evidence(
     root: Path, package_sha: str, *, include_installation: bool = False
 ) -> dict[str, object]:
@@ -130,6 +138,7 @@ def write_bound_evidence(
     payloads = {
         "evidence/registry.json": b"Registry evidence\n",
         "evidence/catalog.json": b"Catalog evidence\n",
+        "qa/preview.webp": b"synthetic reviewed subject\n",
     }
     if include_installation:
         payloads["evidence/installation.json"] = b"installation evidence\n"
@@ -145,6 +154,10 @@ def write_bound_evidence(
         for relative, digest in sorted(hashes.items())
     )
     result: dict[str, object] = {
+        "requiredVisualReviews": [dict(required_visual_reviews()[0],
+                                       artifactSha256=hashes["qa/preview.webp"])],
+        "internalVisualPasses": [dict(record, artifactSha256=hashes["qa/preview.webp"])
+                                 for record in internal_visual_passes()],
         "runtimeEvidence": [
             {
                 "kind": "Registry",
@@ -366,6 +379,53 @@ class BehaviorContractTest(unittest.TestCase):
 
 
 class MaturityTest(unittest.TestCase):
+    def test_visual_pass_requires_declared_scope_and_ordered_pairs_without_user_acceptance(self) -> None:
+        base = {
+            "formalGates": "pass",
+            "requiredVisualReviews": required_visual_reviews(),
+            "internalVisualPasses": internal_visual_passes(),
+            "verifiedArtifactIndex": verified_artifact_context(),
+            "runtimeEvidence": runtime_evidence(),
+            "userAcceptance": [],
+        }
+        for case in ("no-scope", "empty", "builder-only", "reversed", "stale",
+                     "wrong-gate", "uncovered", "duplicate", "malformed-scope"):
+            with self.subTest(case=case):
+                run = deepcopy(base)
+                if case == "no-scope":
+                    del run["requiredVisualReviews"]
+                elif case == "empty":
+                    run["internalVisualPasses"] = []
+                elif case == "builder-only":
+                    run["internalVisualPasses"] = internal_visual_passes()[:1]
+                elif case == "reversed":
+                    run["internalVisualPasses"][0]["reviewSequence"] = 2
+                    run["internalVisualPasses"][1]["reviewSequence"] = 1
+                elif case == "stale":
+                    run["verifiedArtifactIndex"]["qa/preview.webp"] = "f" * 64
+                elif case == "wrong-gate":
+                    run["internalVisualPasses"][1]["gate"] = "identity"
+                elif case == "uncovered":
+                    run["requiredVisualReviews"].append({
+                        "artifactPath": "qa/preview.webp",
+                        "artifactSha256": "e" * 64, "gate": "motion",
+                    })
+                elif case == "duplicate":
+                    run["internalVisualPasses"].append(deepcopy(run["internalVisualPasses"][0]))
+                else:
+                    run["requiredVisualReviews"][0]["gate"] = []
+                result = evaluate_maturity(run)
+                self.assertNotEqual(result["visualStatus"], "pass")
+                self.assertNotEqual(result["maturity"], "production-frames")
+                self.assertEqual(result["runtimeStatus"], "unverified")
+                self.assertFalse(result["releaseAuthority"])
+                self.assertTrue(result["blockers"])
+        complete = evaluate_maturity(base)
+        self.assertEqual(complete["visualStatus"], "pass")
+        self.assertEqual(complete["maturity"], "runtime-valid")
+        self.assertEqual(complete["requiredVisualReviews"], required_visual_reviews())
+        self.assertEqual(complete["userAcceptance"], [])
+
     def test_literal_formal_gate_boundary(self) -> None:
         result = evaluate_maturity(
             {
@@ -380,14 +440,18 @@ class MaturityTest(unittest.TestCase):
             }
         )
 
-        self.assertEqual(result["maturity"], "production-frames")
+        self.assertEqual(result["maturity"], "research-candidate")
+        self.assertEqual(result["visualStatus"], "not-reviewed")
         self.assertEqual(result["runtimeStatus"], "unverified")
         self.assertEqual(result["installedStatus"], "not-authorized")
         self.assertFalse(result["releaseAuthority"])
 
     def test_schema_or_package_pass_cannot_imply_runtime(self) -> None:
         result = evaluate_maturity(
-            {"formalGates": "pass", "packageStatus": "pass", "runtimeEvidence": []}
+            {"formalGates": "pass", "packageStatus": "pass", "runtimeEvidence": [],
+             "requiredVisualReviews": required_visual_reviews(),
+             "internalVisualPasses": internal_visual_passes(),
+             "verifiedArtifactIndex": verified_artifact_context()}
         )
         self.assertEqual(result["maturity"], "production-frames")
         self.assertEqual(result["runtimeStatus"], "unverified")
@@ -398,6 +462,8 @@ class MaturityTest(unittest.TestCase):
         runtime_result = evaluate_maturity(
             {
                 "formalGates": "pass",
+                "requiredVisualReviews": required_visual_reviews(),
+                "internalVisualPasses": internal_visual_passes(),
                 "runtimeEvidence": runtime,
                 "installAuthority": False,
                 "verifiedArtifactIndex": verified_context,
@@ -409,6 +475,8 @@ class MaturityTest(unittest.TestCase):
         short_soak = evaluate_maturity(
             {
                 "formalGates": "pass",
+                "requiredVisualReviews": required_visual_reviews(),
+                "internalVisualPasses": internal_visual_passes(),
                 "runtimeEvidence": runtime,
                 "installAuthority": True,
                 "installationEvidence": installation_evidence(),
@@ -423,6 +491,8 @@ class MaturityTest(unittest.TestCase):
         release = evaluate_maturity(
             {
                 "formalGates": "pass",
+                "requiredVisualReviews": required_visual_reviews(),
+                "internalVisualPasses": internal_visual_passes(),
                 "runtimeEvidence": runtime,
                 "installAuthority": True,
                 "installationEvidence": installation_evidence(),
@@ -504,6 +574,7 @@ class MaturityTest(unittest.TestCase):
         complete = evaluate_maturity(
             {
                 "formalGates": "pass",
+                "requiredVisualReviews": required_visual_reviews(),
                 "internalVisualPasses": internal_visual_passes(),
                 "userAcceptance": [acceptance],
                 "verifiedArtifactIndex": verified_artifact_context(),
@@ -517,6 +588,7 @@ class MaturityTest(unittest.TestCase):
         incomplete = evaluate_maturity(
             {
                 "formalGates": "pass",
+                "requiredVisualReviews": required_visual_reviews(),
                 "internalVisualPasses": internal_visual_passes()[:1],
                 "userAcceptance": [acceptance],
                 "verifiedArtifactIndex": verified_artifact_context(),
@@ -535,6 +607,7 @@ class MaturityTest(unittest.TestCase):
         reversed_result = evaluate_maturity(
             {
                 "formalGates": "pass",
+                "requiredVisualReviews": required_visual_reviews(),
                 "internalVisualPasses": reversed_order,
                 "userAcceptance": [acceptance],
                 "verifiedArtifactIndex": verified_artifact_context(),
@@ -552,6 +625,7 @@ class MaturityTest(unittest.TestCase):
         early_result = evaluate_maturity(
             {
                 "formalGates": "pass",
+                "requiredVisualReviews": required_visual_reviews(),
                 "internalVisualPasses": late_independent,
                 "userAcceptance": [early_acceptance],
                 "verifiedArtifactIndex": verified_artifact_context(),
@@ -609,6 +683,7 @@ class MaturityTest(unittest.TestCase):
     def test_result_does_not_share_input_acceptance_or_evidence_containers(self) -> None:
         run = {
             "formalGates": "pass",
+            "requiredVisualReviews": required_visual_reviews(),
             "runtimeEvidence": runtime_evidence(),
             "verifiedArtifactIndex": verified_artifact_context(),
             "internalVisualPasses": internal_visual_passes(),
@@ -627,11 +702,13 @@ class MaturityTest(unittest.TestCase):
         run["runtimeEvidence"][0]["kind"] = "unknown"  # type: ignore[index]
         run["internalVisualPasses"][0]["reviewer"] = "changed"  # type: ignore[index]
         run["userAcceptance"][0]["reviewer"] = "changed"  # type: ignore[index]
+        run["requiredVisualReviews"][0]["gate"] = "changed"  # type: ignore[index]
         run["verifiedArtifactIndex"]["package.bin"] = "f" * 64  # type: ignore[index]
 
         self.assertEqual(result["runtimeStatus"], "pass")
         self.assertEqual(result["internalVisualPasses"][0]["reviewer"], "builder")
         self.assertEqual(result["userAcceptance"][0]["reviewer"], "user")
+        self.assertEqual(result["requiredVisualReviews"][0]["gate"], "visual")
 
     def test_runtime_evidence_without_a_verified_inventory_context_cannot_advance(self) -> None:
         result = evaluate_maturity(
@@ -642,7 +719,7 @@ class MaturityTest(unittest.TestCase):
         )
 
         self.assertEqual(result["runtimeStatus"], "unverified")
-        self.assertEqual(result["maturity"], "production-frames")
+        self.assertEqual(result["maturity"], "research-candidate")
         self.assertIn("VERIFIED_ARTIFACT_CONTEXT_REQUIRED", result["blockers"])
 
     def test_stale_evidence_must_use_an_exact_boolean_and_verified_hashes(self) -> None:
@@ -671,7 +748,7 @@ class MaturityTest(unittest.TestCase):
         )
 
         self.assertEqual(result["runtimeStatus"], "unverified")
-        self.assertEqual(result["maturity"], "production-frames")
+        self.assertEqual(result["maturity"], "research-candidate")
         self.assertIn("VERIFIED_ARTIFACT_CONTEXT_INVALID", result["blockers"])
 
     def test_nonpassing_runtime_evidence_cannot_promote_runtime(self) -> None:
@@ -680,6 +757,8 @@ class MaturityTest(unittest.TestCase):
         result = evaluate_maturity(
             {
                 "formalGates": "pass",
+                "requiredVisualReviews": required_visual_reviews(),
+                "internalVisualPasses": internal_visual_passes(),
                 "runtimeEvidence": evidence,
                 "verifiedArtifactIndex": verified_artifact_context(),
             }
@@ -846,6 +925,24 @@ class RunSummaryTest(unittest.TestCase):
             self.assertEqual(summary["runtimeStatus"], "pass")
             self.assertEqual(summary["maturity"], "runtime-valid")
             self.assertEqual(summary["verifiedArtifacts"][0]["status"], "verified")
+
+    def test_summary_cannot_promote_declared_formal_pass_without_visual_coverage(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            (root / "package.bin").write_bytes(b"synthetic package")
+            package_sha = hashlib.sha256((root / "package.bin").read_bytes()).hexdigest()
+            draft = draft_summary()
+            bound = write_bound_evidence(root, package_sha)
+            draft.update(bound)
+            draft["localState"]["keep"] = ["run-summary.json", *bound["paths"]]
+            for passes in ([], deepcopy(bound["internalVisualPasses"][:1])):
+                draft["internalVisualPasses"] = passes
+                write_json(root / "run-summary.json", draft)
+                result = build_run_summary(root)
+                self.assertNotEqual(result["visualStatus"], "pass")
+                self.assertEqual(result["runtimeStatus"], "unverified")
+                self.assertEqual(result["requiredVisualReviews"], bound["requiredVisualReviews"])
+                self.assertFalse(result["finalSummary"])
 
     def test_linked_directory_is_recorded_without_following_it(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

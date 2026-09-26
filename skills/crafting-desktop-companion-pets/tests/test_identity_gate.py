@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from pathlib import Path
 import subprocess
 import sys
@@ -11,9 +12,63 @@ SKILL_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SKILL_ROOT / "scripts"))
 
 from contracts import evaluate_identity_gate, sha256_file, validate_visual_verdict
+from prepare_generation_jobs import SelectionError, build_generation_jobs
 
 
 class IdentityGateTest(unittest.TestCase):
+    def test_comparison_passes_cannot_select_identity_or_unlock_action_jobs(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            canonical = Path(raw) / "canonical.png"
+            canonical.write_bytes(b"same candidate used in exploration and selection")
+            digest = sha256_file(canonical)
+            contract = {
+                "identityRoute": "original-brand",
+                "referenceIds": ["approved-brief"],
+                "canonicalPath": str(canonical),
+                "canonicalSha256": digest,
+                "technicalStatus": "pass",
+                "identityGateStatus": "identity-selected",
+                "selection": "selected",
+                "visualVerdictIds": ["builder-review", "independent-review"],
+                "authority": {"identityUncertaintyApproved": False},
+            }
+            references = [{
+                "id": "approved-brief", "roles": ["identity", "proportion"],
+                "allowedUses": ["canonical-identity"],
+                "evidenceClass": "approved-original-design",
+            }]
+            for gates in (("visual", "visual"), ("visual", "identity"),
+                          ("identity", "visual"), ("identity", "identity")):
+                with self.subTest(gates=gates):
+                    verdicts = [{
+                        "verdictId": f"{reviewer}-review", "gate": gate,
+                        "decision": "pass", "reviewScale": "actual-runtime-size",
+                        "artifactSha256": digest,
+                        "reviewer": {"type": reviewer, "id": reviewer},
+                        "observations": [
+                            "Proportion comparison only; identity remains unverified."
+                            if gate == "visual" else "Complete identity review recorded."
+                        ],
+                    } for reviewer, gate in zip(("builder", "independent"), gates)]
+                    for verdict in verdicts:
+                        self.assertEqual(validate_visual_verdict(verdict), [])
+                    result = evaluate_identity_gate(contract, references, verdicts)
+                    if gates == ("identity", "identity"):
+                        self.assertEqual(result["status"], "identity-selected")
+                        self.assertEqual(result["acceptedVerdictIds"], contract["visualVerdictIds"])
+                        jobs = build_generation_jobs(contract, [], references, verdicts)
+                        self.assertEqual(jobs["jobs"][0]["kind"], "identity")
+                        # Earlier general visual evidence stays valid in its own scope.
+                        comparison = deepcopy(verdicts[0])
+                        comparison.update(verdictId="comparison", gate="visual")
+                        mixed = evaluate_identity_gate(contract, references, [comparison, *verdicts])
+                        self.assertEqual(mixed["acceptedVerdictIds"], contract["visualVerdictIds"])
+                    else:
+                        with self.assertRaisesRegex(SelectionError, "evaluated identity gate"):
+                            build_generation_jobs(contract, [], references, verdicts)
+                        self.assertEqual(result["status"], "visual-candidate")
+                        self.assertEqual(result["acceptedVerdictIds"], [])
+
     def test_source_faithful_contract_without_proportion_evidence_is_blocked(
         self,
     ) -> None:
@@ -87,7 +142,7 @@ class IdentityGateTest(unittest.TestCase):
 
             visual_verdict = {
                 "verdictId": "visual-1",
-                "gate": "visual",
+                "gate": "identity",
                 "decision": "pass",
                 "reviewScale": "actual-runtime-size",
                 "artifactSha256": canonical_sha256,
@@ -106,7 +161,7 @@ class IdentityGateTest(unittest.TestCase):
 
             builder_verdict = {
                 "verdictId": "builder-visual-1",
-                "gate": "visual",
+                "gate": "identity",
                 "decision": "pass",
                 "reviewScale": "actual-runtime-size",
                 "artifactSha256": canonical_sha256,
@@ -157,7 +212,7 @@ class IdentityGateTest(unittest.TestCase):
             ]
             user_verdict = {
                 "verdictId": "user-visual-1",
-                "gate": "visual",
+                "gate": "identity",
                 "decision": "pass",
                 "reviewScale": "actual-runtime-size",
                 "artifactSha256": canonical_sha256,
@@ -176,7 +231,7 @@ class IdentityGateTest(unittest.TestCase):
 
             builder_verdict = {
                 "verdictId": "builder-visual-1",
-                "gate": "visual",
+                "gate": "identity",
                 "decision": "pass",
                 "reviewScale": "actual-runtime-size",
                 "artifactSha256": canonical_sha256,
@@ -185,7 +240,7 @@ class IdentityGateTest(unittest.TestCase):
             }
             independent_verdict = {
                 "verdictId": "independent-visual-1",
-                "gate": "visual",
+                "gate": "identity",
                 "decision": "pass",
                 "reviewScale": "actual-runtime-size",
                 "artifactSha256": canonical_sha256,
@@ -238,7 +293,7 @@ class IdentityGateTest(unittest.TestCase):
             ]
             verdict = {
                 "verdictId": "visual-1",
-                "gate": "visual",
+                "gate": "identity",
                 "decision": "pass",
                 "reviewScale": "actual-runtime-size",
                 "artifactSha256": canonical_sha256,
@@ -273,7 +328,7 @@ class IdentityGateTest(unittest.TestCase):
             ]
             verdict = {
                 "verdictId": "visual-1",
-                "gate": "visual",
+                "gate": "identity",
                 "decision": "pass",
                 "reviewScale": "actual-runtime-size",
                 "artifactSha256": canonical_sha256,
@@ -301,7 +356,7 @@ class IdentityGateTest(unittest.TestCase):
             }
             verdict = {
                 "verdictId": "visual-1",
-                "gate": "visual",
+                "gate": "identity",
                 "decision": "pass",
                 "reviewScale": "actual-runtime-size",
                 "artifactSha256": canonical_sha256,

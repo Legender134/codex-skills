@@ -316,7 +316,7 @@ class FrameQualityAssuranceTest(unittest.TestCase):
             self.assertEqual(sidecar_input.read_bytes(), sidecar_source_bytes)
             self.assertFalse(output.exists())
 
-            output_alias = Path(str(root) + "\\nested\\..\\frame-1.png")
+            output_alias = root / "nested" / ".." / "frame-1.png"
             with self.assertRaisesRegex(ValueError, "match an input"):
                 make_contact_sheet(
                     [{"label": "output input", "path": str(paths[0])}],

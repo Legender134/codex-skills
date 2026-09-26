@@ -7,6 +7,9 @@ description: Use when creating, repairing, reviewing, validating, or packaging a
 
 ## Start
 
+For an existing run, read its state record and linked decisions first. Reuse
+completed work and enter at the earliest affected gate.
+
 Record the exact target/run root, task type, identity route, detected or
 proposed format, immutable comparison set, and separate install/integrate/
 commit/push/publish authority.
@@ -22,6 +25,8 @@ are already selected.
 - Model capability, approvals, or resuming production: [execution-and-models.md](references/execution-and-models.md).
 - Identity or evidence: [identity-and-evidence.md](references/identity-and-evidence.md).
 - Morphology, proportion, or likeness: [canonical-identity-and-proportions.md](references/canonical-identity-and-proportions.md).
+- Humanoid Q/chibi or high-quality modeled-style proportions: also read [humanoid-proportion-design.md](references/humanoid-proportion-design.md); desktop size alone does not select Q proportions.
+- Turning a proportion brief into a drawing, or diagnosing a failed candidate: use the diagrams and worked cases in [design-and-repair-examples.md](references/design-and-repair-examples.md).
 - Actions, motion, props, or effects: [actions-and-motion.md](references/actions-and-motion.md).
 - Generation batches or retries: [generation-job-graph.md](references/generation-job-graph.md) and [repair-and-convergence.md](references/repair-and-convergence.md).
 - Visual/technical review: [visual-qa.md](references/visual-qa.md).
@@ -31,9 +36,9 @@ are already selected.
 
 ## Hard gates
 
-1. Select canonical identity at actual runtime size before dependent visual
-   jobs. Source-faithful work uses target evidence; original/brand work uses
-   an approved brief.
+1. Select canonical identity at actual runtime size before downstream action
+   production. Identity exploration and repair may precede selection, using
+   target evidence or the approved original/brand brief.
 2. Generated images are candidates. Deterministic tools own extraction,
    registration, order, atlases, previews, hashes, and reports.
 3. Builder self-review and independent internal visual review must pass before

@@ -6,6 +6,10 @@ owns state transitions and descendant traversal.
 
 ## Diagnose the failing layer
 
+For concrete proportion, scale and reference-role diagnoses, see
+[Design and Repair Examples](design-and-repair-examples.md). Historical symptoms
+can suggest a hypothesis; verify it on the current artifact before repairing.
+
 | Failure class | Minimum causal repair |
 |---|---|
 | Identity, era, costume, ability, caster, or palette | replace target evidence or rebuild the canonical identity |
@@ -19,6 +23,14 @@ owns state transitions and descendant traversal.
 Record visible evidence, root condition, exactly one changed variable, preserved
 passing properties, before/after result, and next strategy. Preserve the
 last-valid artifact hash so a local repair does not cause unrelated rework.
+
+For an alpha failure, first distinguish a real alpha channel from a painted
+checkerboard, opaque background or baked shadow. Use deterministic cleanup only
+when foreground membership is reliable; inspect hair, veils, translucent fabric
+and similar foreground/background colors on light and dark backgrounds. If
+cleanup removes character detail or leaves opaque islands, return to a targeted
+image edit or regenerate the affected source with genuine transparency. Do not
+repeat a more aggressive color-key threshold as if it could recover lost art.
 
 ## Change strategy after recurrence
 

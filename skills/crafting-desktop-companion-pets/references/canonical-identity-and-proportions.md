@@ -21,6 +21,12 @@ Human fields do not apply by default to an animal, object, or abstract pet. All
 routes still require target-specific body mass, stable anchors, actual-size
 readability, and a visual pass.
 
+For humanoids, use [Humanoid Proportion Design](humanoid-proportion-design.md)
+to choose Q/chibi or high-quality modeled-style proportions, separate anatomy
+from display size, and build a controlled comparison when needed. These are
+design routes, independent of the identity route and package format. A flying
+humanoid still needs this guidance as well as its flight anchors.
+
 ## Define target-specific measurements
 
 Each measurement records its target feature, source/reference ID, target range,
@@ -66,6 +72,15 @@ are within tolerance, downstream work exists, or the user could identify it.
 Preserve high-salience recognition before tertiary texture. Simplify tiny
 decoration before shrinking the body or blurring the face. A stylized or chibi
 route must preserve target age impression and target-specific proportions.
+Judge that impression within the selected stylization: an adult Q character
+can retain its role and personality without adult limb lengths. Intentional
+Q exaggeration is not itself a defect.
+
+Check the actual target's frame/layer geometry, intended display scale, and
+export resolution before changing anatomy for readability. Follow the causal
+repair table in [Humanoid Proportion Design](humanoid-proportion-design.md).
+An old calibration canvas is not a universal size limit; a static size mockup
+is not evidence of the running application's scale, DPI, or motion quality.
 
 Use `measure_identity_geometry.py` only to report canvas, alpha bounds, alpha
 pixels, centroid, width profile, and maximum-width segment as
@@ -103,6 +118,10 @@ acceptance or a genuinely irreducible subjective choice; it cannot replace or
 precede internal review. A technical verdict that claims visual acceptance
 remains a blocker
 (`TECHNICAL_CANNOT_GRANT_VISUAL_PASS`).
+
+Use `gate: "identity"` for these full identity reviews. A general `visual`
+pass does not satisfy this gate; see [Visual QA](visual-qa.md) for exploratory
+scope and handling older generic visual records without rewriting their history.
 
 Store the canonical path/hash and gate evidence in the
 [Identity contract](../templates/identity-contract.json). A changed canonical

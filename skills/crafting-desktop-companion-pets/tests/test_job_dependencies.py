@@ -141,7 +141,7 @@ def write_identity_gate_evidence(
             json.dumps(
                 {
                     "verdictId": f"{reviewer_type}-identity-pass",
-                    "gate": "visual",
+                    "gate": "identity",
                     "decision": "pass",
                     "reviewScale": "actual-runtime-size",
                     "artifactSha256": canonical_sha256,
@@ -1089,7 +1089,7 @@ class JobDependencyTest(unittest.TestCase):
             action_bytes = action_path.read_bytes()
 
             cases = {
-                "identity-alias": Path(str(root) + "\\actions\\..\\identity.json"),
+                "identity-alias": actions_path / ".." / "identity.json",
                 "action-input": action_path,
                 "inside-actions": actions_path / "generated-jobs.json",
             }

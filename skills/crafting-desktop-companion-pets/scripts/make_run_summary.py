@@ -1520,6 +1520,7 @@ def _build_run_summary_locked(
             "packageStatus": maturity["packageStatus"],
             "runtimeStatus": maturity["runtimeStatus"],
             "installedStatus": maturity["installedStatus"],
+            "requiredVisualReviews": maturity["requiredVisualReviews"],
             "internalVisualPasses": maturity["internalVisualPasses"],
             "userAcceptance": maturity["userAcceptance"],
             "authorities": maturity["authorities"],

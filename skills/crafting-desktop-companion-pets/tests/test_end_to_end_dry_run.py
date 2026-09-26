@@ -75,7 +75,7 @@ def _identity_visual_verdict(
 ) -> dict[str, object]:
     return {
         "verdictId": verdict_id,
-        "gate": "visual",
+        "gate": "identity",
         "decision": "pass",
         "reviewScale": "actual-runtime-size",
         "artifactSha256": artifact_sha256,
@@ -183,7 +183,7 @@ class EndToEndDryRunTest(unittest.TestCase):
             ]
             user_verdict = {
                 "verdictId": "user-visual-1",
-                "gate": "visual",
+                "gate": "identity",
                 "decision": "pass",
                 "reviewScale": "actual-runtime-size",
                 "artifactSha256": canonical_sha256,

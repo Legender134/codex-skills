@@ -20,6 +20,7 @@
   "completedJobIds": [],
   "visualVerdictIds": [],
   "unresolvedItems": [],
+  "requiredVisualReviews": [],
   "internalVisualPasses": [],
   "userAcceptance": [],
   "installAuthority": false,

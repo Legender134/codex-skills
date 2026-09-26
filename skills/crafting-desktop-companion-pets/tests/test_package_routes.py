@@ -354,17 +354,35 @@ class PackageRouteTest(unittest.TestCase):
                 self.assertEqual(record["fixture"]["path"], f"tests/fixtures/v{version}/pet.json")
                 self.assertEqual(record["fixture"]["sha256"], manifest_hash)
                 self.assertEqual(hashlib.sha256(fixture.read_bytes()).hexdigest(), manifest_hash)
-                runtime_manifest = RUNTIME_ROOT / manifest_path
-                self.assertEqual(
-                    runtime_manifest.read_bytes(), fixture.read_bytes(),
-                    "fixture must retain byte-for-byte runtime provenance",
-                )
-                self.assertEqual(
-                    hashlib.sha256(runtime_manifest.read_bytes()).hexdigest(), manifest_hash
-                )
                 self.assertNotIn(
                     _FORBIDDEN_HOME_PATH, json.dumps(record, ensure_ascii=False)
                 )
+
+    def test_fixture_provenance_against_pinned_runtime_revision(self) -> None:
+        """Compare historical fixtures to their revision, not a changing checkout."""
+        available = subprocess.run(
+            ["git", "-C", str(RUNTIME_ROOT), "cat-file", "-e", f"{RUNTIME_COMMIT}^{{commit}}"],
+            capture_output=True,
+            timeout=10,
+        )
+        if available.returncode != 0:
+            self.skipTest("caller runtime repository lacks the recorded fixture revision")
+        for version in (2, 3, 4):
+            with self.subTest(version=version):
+                record = json.loads(
+                    (FIXTURE_ROOT / f"v{version}" / "source.json").read_text(encoding="utf-8")
+                )
+                source = record["source"]
+                for kind in ("manifest", "schema"):
+                    captured = subprocess.run(
+                        ["git", "-C", str(RUNTIME_ROOT), "show", f"{RUNTIME_COMMIT}:{source[kind + 'Path']}"],
+                        check=True,
+                        capture_output=True,
+                        timeout=10,
+                    ).stdout
+                    self.assertEqual(hashlib.sha256(captured).hexdigest(), source[kind + "Sha256"])
+                    if kind == "manifest":
+                        self.assertEqual(captured, (FIXTURE_ROOT / f"v{version}" / "pet.json").read_bytes())
 
     def test_task7_text_does_not_persist_machine_specific_paths(self) -> None:
         paths = (

@@ -7,6 +7,19 @@
 - Requested format route: `undecided`, `v2`, `v3`, or `v4`
 - Requested task type:
 
+## Proportion and presentation decision
+
+For humanoids, use the installed skill's `references/humanoid-proportion-design.md`.
+For other morphologies, record their relevant body relationships instead.
+
+- Design route: Q/chibi or high-quality modeled style/source proportions;
+  independent of identity route, render quality and package version:
+- Selection authority, target references and permitted stylization:
+- Body relationships to preserve; requested values versus observations and uncertainty:
+- Source/export resolution, character and composed-frame geometry, intended display scale:
+- Evidence: structural views/action pose and actual-size review; label any simulated display:
+- Selected candidate/hash and remaining uncertainty (reuse existing identity records):
+
 ## Capability decision record
 
 For a new package or migration, research the current runtime capabilities
@@ -91,6 +104,12 @@ Keep these maturity stages in order: `research-candidate`,
 `identity-candidate`, `identity-selected`, `storyboard-candidate`,
 `production-frames`, `runtime-valid`, `installed-test`,
 `long-use-candidate`, and `release-candidate`.
+
+These labels describe evidence maturity, not permission to expand the task.
+A local deliverable can finish at its authorized stage. The current summary
+evaluator requires installation evidence for `long-use-candidate`; retain any
+development-runtime observations separately without claiming installed soak or
+installing merely to advance a label.
 
 Package/schema checks, visual review, runtime Registry/Catalog evidence,
 installation evidence, soak results, user acceptance, and authorization are

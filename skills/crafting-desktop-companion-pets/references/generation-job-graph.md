@@ -24,9 +24,16 @@ Choose the smallest safe generation unit:
 | Large effect | preserve the selected body; use a layer or larger action canvas if needed |
 | Form or sequence | independent enter, resident, and exit work |
 
-Except for an initial identity candidate, every visual job carries the selected
-canonical identity and the relevant action inputs. A layout reference controls
-only order, placement, and safe margins.
+Identity exploration, comparison edits and canonical-identity repair may run
+before canonical selection. Bind them to the target evidence/approved brief,
+the current candidate hash when editing, preserved features, permitted changes
+and a bounded comparison or repair scope. A failed identity may remain a
+continuity reference, not a passing canonical authority. Keep these jobs at the
+identity stage; `prepare_generation_jobs.py` builds downstream action jobs and
+must not be used to bypass its selected-identity prerequisite.
+
+Every downstream action job carries the selected canonical identity and relevant
+action inputs. A layout reference controls only order, placement and safe margins.
 
 Before constructing downstream generation jobs, recompute the identity gate
 from the canonical file/hash, selected reference records, and ordered builder
@@ -52,6 +59,11 @@ Every generation or edit request records:
 This request contract names inputs and points to their owners; it does not
 duplicate the [Job manifest](../templates/job-manifest.json) schema or a
 version-specific package schema.
+
+Apply only relevant fields: a single identity candidate has no grid or action
+phase, and a prop-free action has no prop lifecycle. An explicitly scoped concept
+study may use a plain background; record that it is not a production-alpha asset.
+For production sprites, request genuine transparency and verify decoded alpha.
 
 ## Prove pilots before expansion
 

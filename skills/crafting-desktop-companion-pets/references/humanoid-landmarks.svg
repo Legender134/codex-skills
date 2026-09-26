@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="740" viewBox="0 0 1200 740" role="img" aria-labelledby="title desc">
+<title id="title">Illustrative humanoid construction landmarks</title>
+<desc id="desc">Two clothed construction studies, three heads and seven and a half heads tall, share crown and sole levels. These are examples only, not required proportions or approved pets. Head height excludes hair. Pelvis and knees are shown separately from garment hems.</desc>
+<rect width="1200" height="740" fill="#f4f6fb"/>
+<style>text{font-family:DejaVu Sans,sans-serif;fill:#253249;font-size:15px}.title{font-size:27px;font-weight:bold}.sub{fill:#57647b}.panel{fill:#fff;stroke:#d8deea;stroke-width:1.5}.bone{fill:none;stroke:#456178;stroke-width:13;stroke-linecap:round;stroke-linejoin:round}.form{fill:#d3e8ed;stroke:#456178;stroke-width:2}.joint{fill:#fff;stroke:#456178;stroke-width:2}.contour{fill:none;stroke:#ad7b9b;stroke-width:2;stroke-dasharray:6 5}.guide{stroke:#9caabe;stroke-width:1;stroke-dasharray:4 5}.label{stroke:#607a8a;stroke-width:1;fill:none}.accent{fill:#12687b;font-weight:bold}</style>
+<text x="36" y="43" class="title">Construction landmarks: two illustrative studies</text>
+<text x="36" y="73" class="sub">Equal crown-to-sole height. Neither study selects a character's proportions or proves visual quality.</text>
+<rect x="30" y="98" width="555" height="552" rx="12" class="panel"/>
+<rect x="615" y="98" width="555" height="552" rx="12" class="panel"/>
+<text x="53" y="132" class="accent">Q study: 3 head units</text>
+<text x="638" y="132" class="accent">Adult study: 7.5 head units</text>
+<line x1="70" y1="180" x2="405" y2="180" class="guide"/>
+<line x1="70" y1="600" x2="405" y2="600" class="guide"/>
+<path d="M 217 348 Q 202 144 280 156 Q 358 144 343 348" class="contour"/>
+<path d="M 212 344 L 205 588 L 355 588 L 348 344" class="contour"/>
+<line x1="280" y1="320" x2="280" y2="344" class="bone"/>
+<line x1="222" y1="344" x2="338" y2="344" class="bone"/>
+<line x1="280" y1="344" x2="280" y2="447" class="bone"/>
+<path d="M 222 344 L 212 403.5 L 220 459" class="bone"/>
+<path d="M 256 447 L 250 521 L 248 588 L 234 594" class="bone"/>
+<circle cx="222" cy="344" r="6" class="joint"/>
+<circle cx="212" cy="403.5" r="6" class="joint"/>
+<circle cx="220" cy="459" r="6" class="joint"/>
+<circle cx="256" cy="447" r="6" class="joint"/>
+<circle cx="250" cy="521" r="6" class="joint"/>
+<path d="M 338 344 L 348 403.5 L 340 459" class="bone"/>
+<path d="M 304 447 L 310 521 L 312 588 L 326 594" class="bone"/>
+<circle cx="338" cy="344" r="6" class="joint"/>
+<circle cx="348" cy="403.5" r="6" class="joint"/>
+<circle cx="340" cy="459" r="6" class="joint"/>
+<circle cx="304" cy="447" r="6" class="joint"/>
+<circle cx="310" cy="521" r="6" class="joint"/>
+<ellipse cx="280" cy="250.0" rx="53" ry="70.0" class="form"/>
+<ellipse cx="280" cy="384" rx="49" ry="24.72" class="form"/>
+<path d="M 250 433 L 310 433 L 302 459 L 258 459 Z" class="form"/>
+<line x1="100" y1="180" x2="100" y2="320" class="label"/>
+<line x1="94" y1="180" x2="106" y2="180" class="label"/>
+<line x1="94" y1="320" x2="106" y2="320" class="label"/>
+<text x="75" y="255.0" class="accent">1 H</text>
+<line x1="284" y1="180" x2="402" y2="180" class="label"/>
+<text x="409" y="185" class="">crown</text>
+<line x1="337" y1="320" x2="402" y2="320" class="label"/>
+<text x="409" y="325" class="">chin</text>
+<line x1="342" y1="344" x2="402" y2="344" class="label"/>
+<text x="409" y="349" class="">shoulders</text>
+<line x1="333" y1="384" x2="402" y2="384" class="label"/>
+<text x="409" y="389" class="">ribcage</text>
+<line x1="314" y1="447" x2="402" y2="447" class="label"/>
+<text x="409" y="452" class="">pelvis</text>
+<line x1="314" y1="521" x2="402" y2="521" class="label"/>
+<text x="409" y="526" class="">knees</text>
+<line x1="330" y1="600" x2="402" y2="600" class="label"/>
+<text x="409" y="605" class="">soles</text>
+<line x1="655" y1="180" x2="990" y2="180" class="guide"/>
+<line x1="655" y1="600" x2="990" y2="600" class="guide"/>
+<path d="M 833 264 Q 818 144 865 156 Q 912 144 897 264" class="contour"/>
+<path d="M 805 260 L 790 588 L 940 588 L 925 260" class="contour"/>
+<line x1="865" y1="236" x2="865" y2="260" class="bone"/>
+<line x1="815" y1="260" x2="915" y2="260" class="bone"/>
+<line x1="865" y1="260" x2="865" y2="394" class="bone"/>
+<path d="M 815 260 L 805 335.0 L 813 406" class="bone"/>
+<path d="M 841 394 L 835 500 L 833 588 L 819 594" class="bone"/>
+<circle cx="815" cy="260" r="6" class="joint"/>
+<circle cx="805" cy="335.0" r="6" class="joint"/>
+<circle cx="813" cy="406" r="6" class="joint"/>
+<circle cx="841" cy="394" r="6" class="joint"/>
+<circle cx="835" cy="500" r="6" class="joint"/>
+<path d="M 915 260 L 925 335.0 L 917 406" class="bone"/>
+<path d="M 889 394 L 895 500 L 897 588 L 911 594" class="bone"/>
+<circle cx="915" cy="260" r="6" class="joint"/>
+<circle cx="925" cy="335.0" r="6" class="joint"/>
+<circle cx="917" cy="406" r="6" class="joint"/>
+<circle cx="889" cy="394" r="6" class="joint"/>
+<circle cx="895" cy="500" r="6" class="joint"/>
+<ellipse cx="865" cy="208.0" rx="22" ry="28.0" class="form"/>
+<ellipse cx="865" cy="308" rx="41" ry="32.16" class="form"/>
+<path d="M 835 380 L 895 380 L 887 406 L 843 406 Z" class="form"/>
+<line x1="685" y1="180" x2="685" y2="236" class="label"/>
+<line x1="679" y1="180" x2="691" y2="180" class="label"/>
+<line x1="679" y1="236" x2="691" y2="236" class="label"/>
+<text x="660" y="213.0" class="accent">1 H</text>
+<line x1="869" y1="180" x2="987" y2="180" class="label"/>
+<text x="994" y="185" class="">crown</text>
+<line x1="891" y1="236" x2="987" y2="236" class="label"/>
+<text x="994" y="241" class="">chin</text>
+<line x1="919" y1="260" x2="987" y2="260" class="label"/>
+<text x="994" y="265" class="">shoulders</text>
+<line x1="910" y1="308" x2="987" y2="308" class="label"/>
+<text x="994" y="313" class="">ribcage</text>
+<line x1="899" y1="394" x2="987" y2="394" class="label"/>
+<text x="994" y="399" class="">pelvis</text>
+<line x1="899" y1="500" x2="987" y2="500" class="label"/>
+<text x="994" y="505" class="">knees</text>
+<line x1="915" y1="600" x2="987" y2="600" class="label"/>
+<text x="994" y="605" class="">soles</text>
+<text x="52" y="630" class="sub">Short torso and limbs are a deliberate whole-body design.</text>
+<text x="637" y="630" class="sub">Target age and build still govern the selected construction.</text>
+<line x1="40" y1="682" x2="88" y2="682" class="contour"/>
+<text x="100" y="687" class="">Dotted: illustrative hair / garment mass. Do not measure head height or leg length from these contours.</text>
+<text x="40" y="718" class="sub">Next: use the target's own depth view and an action pose to check volume, joints and gesture. No universal pass band.</text>
+</svg>

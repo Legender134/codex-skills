@@ -6,11 +6,12 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 if __package__:
-    from .campaign import load_campaign_summary, validate_campaign
+    from .campaign import load_campaign_summary, skill_content_sha256, validate_campaign
 else:
-    from campaign import load_campaign_summary, validate_campaign
+    from campaign import load_campaign_summary, skill_content_sha256, validate_campaign
 
 
 ROOT = Path(__file__).resolve().parent
@@ -32,6 +33,7 @@ SCENARIO_SEQUENCE = {
 CURRENT_SKILL_HASH = hashlib.sha256(
     (SKILL_ROOT / "SKILL.md").read_bytes()
 ).hexdigest()
+CURRENT_CONTENT_HASH = skill_content_sha256()
 
 
 class BehaviorEvidenceTest(unittest.TestCase):
@@ -43,6 +45,7 @@ class BehaviorEvidenceTest(unittest.TestCase):
             "variant": variant,
             "rep": rep,
             "skillEntrypointSha256": CURRENT_SKILL_HASH,
+            "skillContentSha256": CURRENT_CONTENT_HASH,
             "responsePath": f"responses/{scenario_id}-rep{rep}.md",
             "reviewed": True,
             "pass": True,
@@ -331,6 +334,82 @@ class BehaviorEvidenceTest(unittest.TestCase):
             self.assertEqual(len(summary["runs"]), 25)
             with self.assertRaises(ValueError):
                 validate_campaign(campaign_root, require_pass=True)
+
+    def test_legacy_campaign_is_readable_but_cannot_claim_current_pass(self) -> None:
+        def legacy_record(variant: str, rep: int, record: dict[str, object]) -> None:
+            record.pop("skillContentSha256")
+
+        with tempfile.TemporaryDirectory() as raw:
+            campaign_root = Path(raw)
+            self._write_campaign(campaign_root, mutate=legacy_record)
+            self.assertEqual(len(validate_campaign(campaign_root, False)["runs"]), 25)
+            with self.assertRaisesRegex(ValueError, "content snapshot"):
+                validate_campaign(campaign_root, True)
+
+    def test_content_changes_invalidate_campaign_without_entrypoint_change(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            skill = root / "skill"
+            skill.mkdir()
+            entrypoint = (SKILL_ROOT / "SKILL.md").read_bytes()
+            (skill / "SKILL.md").write_bytes(entrypoint)
+            relative_files = (
+                "references/design.md", "templates/identity.json", "scripts/build.py",
+                "agents/openai.yaml", "assets/example.txt",
+                "tests/behavior/scenarios.json", "tests/behavior/rubric.json",
+            )
+            for relative in relative_files:
+                path = skill / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("original", encoding="utf-8")
+            snapshot = skill_content_sha256(skill)
+
+            def bind_snapshot(variant: str, rep: int, record: dict[str, object]) -> None:
+                record["skillContentSha256"] = snapshot
+
+            campaign_root = root / "campaign"
+            self._write_campaign(campaign_root, mutate=bind_snapshot)
+            with patch.dict(validate_campaign.__globals__, {"SKILL_ROOT": skill}):
+                validate_campaign(campaign_root, True)
+                for relative in relative_files:
+                    with self.subTest(changed=relative):
+                        path = skill / relative
+                        path.write_text("changed", encoding="utf-8")
+                        self.assertEqual((skill / "SKILL.md").read_bytes(), entrypoint)
+                        with self.assertRaisesRegex(ValueError, "content snapshot"):
+                            validate_campaign(campaign_root, True)
+                        self.assertEqual(len(validate_campaign(campaign_root, False)["runs"]), 25)
+                        path.write_text("original", encoding="utf-8")
+
+                original = skill / "references/design.md"
+                renamed = skill / "references/renamed.md"
+                original.rename(renamed)
+                with self.assertRaisesRegex(ValueError, "content snapshot"):
+                    validate_campaign(campaign_root, True)
+                renamed.rename(original)
+                added = skill / "references/new.md"
+                added.write_text("new guidance", encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "content snapshot"):
+                    validate_campaign(campaign_root, True)
+                added.unlink()
+                validate_campaign(campaign_root, True)
+
+                cache = skill / "scripts/__pycache__/build.pyc"
+                cache.parent.mkdir()
+                cache.write_bytes(b"generated cache")
+                validate_campaign(campaign_root, True)
+
+    def test_malformed_or_mixed_content_hashes_are_rejected(self) -> None:
+        for invalid in (None, True, {}, "invalid", "A" * 64, "b" * 64):
+            with self.subTest(value=invalid), tempfile.TemporaryDirectory() as raw:
+                def change_record(variant: str, rep: int, record: dict[str, object]) -> None:
+                    if variant == VARIANTS[0] and rep == 1:
+                        record["skillContentSha256"] = invalid
+
+                campaign_root = Path(raw)
+                self._write_campaign(campaign_root, mutate=change_record)
+                with self.assertRaises(ValueError):
+                    load_campaign_summary(campaign_root)
 
     def test_campaign_loader_rejects_duplicate_variant_rep_pairs(self) -> None:
         def duplicate_rep(variant: str, rep: int, record: dict[str, object]) -> None:

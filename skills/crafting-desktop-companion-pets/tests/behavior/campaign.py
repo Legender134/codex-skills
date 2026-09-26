@@ -1,3 +1,11 @@
+"""Validate manually reviewed campaigns, not generate or score their responses.
+
+Capture --print-skill-hashes before running a campaign and retain both fields in
+each record. skillContentSha256 binds executable guidance and evaluation inputs;
+do not backfill it on old responses to manufacture a current-version pass.
+Legacy entrypoint-only records remain readable as historical evidence.
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -34,6 +42,26 @@ REQUIRED_RECORD_FIELDS = {
     "rationalizations",
     "reviewerNotes",
 }
+
+
+def skill_content_sha256(skill_root: Path | None = None) -> str:
+    """Fingerprint guidance, helpers and prompts; ignore generated Python caches."""
+    root = SKILL_ROOT if skill_root is None else Path(skill_root)
+    files = [root / "SKILL.md"]
+    for directory in ("references", "templates", "scripts", "agents", "assets"):
+        files.extend(
+            path for path in (root / directory).rglob("*")
+            if path.is_file()
+            and "__pycache__" not in path.relative_to(root).parts
+            and path.suffix not in {".pyc", ".pyo"}
+        )
+    files.extend(root / "tests" / "behavior" / name for name in ("scenarios.json", "rubric.json"))
+    manifest = {
+        path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in files
+    }
+    serialized = json.dumps(manifest, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 
 def _require_nonempty_string(record: dict[str, object], field: str, path: Path) -> None:
@@ -121,6 +149,10 @@ def _validate_record(
         raise ValueError(
             f"{path}: skillEntrypointSha256 must be a lowercase SHA-256"
         )
+    if "skillContentSha256" in record:
+        content_hash = record["skillContentSha256"]
+        if not isinstance(content_hash, str) or SHA256_PATTERN.fullmatch(content_hash) is None:
+            raise ValueError(f"{path}: skillContentSha256 must be a lowercase SHA-256")
     if record["reviewed"] is not True:
         raise ValueError(f"{path}: reviewed evidence is required")
     if not isinstance(record["pass"], bool):
@@ -254,6 +286,8 @@ def load_campaign_summary(root: Path) -> dict[str, object]:
     campaign_hashes = {str(run["skillEntrypointSha256"]) for run in runs}
     if len(campaign_hashes) != 1:
         raise ValueError("campaign records do not share one Skill entrypoint hash")
+    if len({run.get("skillContentSha256") for run in runs}) != 1:
+        raise ValueError("campaign records do not share one Skill content snapshot")
 
     return {"variants": variants, "runs": runs}
 
@@ -274,6 +308,14 @@ def validate_campaign(root: Path, require_pass: bool) -> dict[str, object]:
             raise ValueError(
                 "campaign Skill hash does not match the current Skill entrypoint"
             )
+        recorded_content_hashes = {
+            run.get("skillContentSha256") for run in summary["runs"]
+        }
+        if recorded_content_hashes != {skill_content_sha256()}:
+            raise ValueError(
+                "campaign lacks a matching current Skill content snapshot; "
+                "entrypoint-only or stale evidence remains historical"
+            )
         failed_runs = [
             run
             for run in summary["runs"]
@@ -286,9 +328,20 @@ def validate_campaign(root: Path, require_pass: bool) -> dict[str, object]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Validate campaign evidence records.")
-    parser.add_argument("--campaign", required=True, type=Path)
+    target = parser.add_mutually_exclusive_group(required=True)
+    target.add_argument("--campaign", type=Path)
+    target.add_argument("--print-skill-hashes", action="store_true")
     parser.add_argument("--require-pass", action="store_true")
     arguments = parser.parse_args(argv)
+
+    if arguments.print_skill_hashes:
+        if arguments.require_pass:
+            parser.error("--require-pass requires --campaign")
+        print(json.dumps({
+            "skillEntrypointSha256": hashlib.sha256((SKILL_ROOT / "SKILL.md").read_bytes()).hexdigest(),
+            "skillContentSha256": skill_content_sha256(),
+        }, sort_keys=True))
+        return 0
 
     try:
         summary = validate_campaign(

@@ -713,7 +713,7 @@ def _result(
     }
 
 
-def _accepted_visual_verdict(
+def _accepted_identity_verdict(
     verdict: dict[str, object],
     canonical_sha256: str,
     *,
@@ -722,7 +722,7 @@ def _accepted_visual_verdict(
     reviewer = verdict.get("reviewer")
     return (
         _is_utf8_text(verdict.get("gate"))
-        and verdict.get("gate") in {"identity", "visual"}
+        and verdict.get("gate") == "identity"
         and verdict.get("decision") == "pass"
         and _is_utf8_text(verdict.get("verdictId"))
         and bool(verdict.get("verdictId"))
@@ -898,7 +898,7 @@ def evaluate_identity_gate(
         reviewer_type: [
             index
             for index, verdict in enumerate(verdicts)
-            if _accepted_visual_verdict(
+            if _accepted_identity_verdict(
                 verdict,
                 actual_sha256,
                 reviewer_type=reviewer_type,
@@ -923,7 +923,7 @@ def evaluate_identity_gate(
             Issue(
                 "BUILDER_SELF_REVIEW_PASS_REQUIRED",
                 "verdicts",
-                "A matching builder actual-size self-review pass is required.",
+                "A matching builder actual-size pass with gate='identity' is required.",
             )
         )
     if not independent_indexes:
@@ -931,7 +931,7 @@ def evaluate_identity_gate(
             Issue(
                 "INDEPENDENT_VISUAL_PASS_REQUIRED_BEFORE_USER_HANDOFF",
                 "verdicts",
-                "A matching independent internal visual pass is required before user handoff.",
+                "A matching independent actual-size pass with gate='identity' is required before user handoff.",
             )
         )
     elif builder_indexes and review_pair is None:
@@ -1758,6 +1758,7 @@ def _maturity_defaults(blockers: set[str] | None = None) -> dict[str, object]:
         "packageStatus": "not-packaged",
         "runtimeStatus": "unverified",
         "installedStatus": "not-authorized",
+        "requiredVisualReviews": [],
         "internalVisualPasses": [],
         "userAcceptance": [],
         "authorities": {
@@ -2172,6 +2173,57 @@ def _valid_internal_visual_passes(
     )
 
 
+def _visual_review_coverage(
+    value: object,
+    passes: list[dict[str, object]],
+    verified_artifacts: dict[str, str] | None,
+    blockers: set[str],
+) -> tuple[list[dict[str, object]], bool]:
+    """Check the declared current scope, not the truth/completeness of its reviews."""
+    if not isinstance(value, list) or not value:
+        blockers.add("REQUIRED_VISUAL_REVIEWS_MISSING_OR_INVALID")
+        return [], False
+    scope: list[dict[str, object]] = []
+    seen: set[tuple[str, str, str]] = set()
+    complete = True
+    for index, item in enumerate(value):
+        prefix = f"REQUIRED_VISUAL_REVIEW_{index}"
+        if not isinstance(item, dict):
+            blockers.add(f"{prefix}_INVALID")
+            complete = False
+            continue
+        path = _normalized_artifact_path(item.get("artifactPath"))
+        sha = item.get("artifactSha256")
+        gate = item.get("gate")
+        if not (path is not None and _valid_sha256(sha)
+                and _is_utf8_text(gate) and gate in _USER_ACCEPTANCE_GATES):
+            blockers.add(f"{prefix}_INVALID")
+            complete = False
+            continue
+        key = (path, sha.lower(), gate)
+        if key in seen:
+            blockers.add("REQUIRED_VISUAL_REVIEW_DUPLICATE")
+            complete = False
+            continue
+        seen.add(key)
+        scope.append({"artifactPath": path, "artifactSha256": sha.lower(), "gate": gate})
+        if verified_artifacts is None or verified_artifacts.get(path) != sha.lower():
+            blockers.add(f"{prefix}_ARTIFACT_UNVERIFIED")
+            complete = False
+        pair = {
+            record["reviewer"]: record["reviewSequence"]
+            for record in passes
+            if (record["artifactPath"], record["artifactSha256"], record["gate"]) == key
+        }
+        if set(pair) != {"builder", "independent"}:
+            blockers.add(f"{prefix}_INTERNAL_PAIR_REQUIRED")
+            complete = False
+        elif pair["builder"] >= pair["independent"]:
+            blockers.add(f"{prefix}_REVIEW_ORDER_INVALID")
+            complete = False
+    return scope, complete
+
+
 def evaluate_maturity(run: dict[str, object]) -> dict[str, object]:
     """Evaluate maturity and authorities from evidenced, non-interchangeable gates.
 
@@ -2217,7 +2269,7 @@ def evaluate_maturity(run: dict[str, object]) -> dict[str, object]:
             blockers=blockers,
         ),
     }
-    formal_gates_pass = run.get("formalGates") == "pass"
+    formal_gates_claimed = run.get("formalGates") == "pass"
     formal_gate_value = run.get("formalGates")
     package_status = run.get("packageStatus")
     if package_status not in {
@@ -2231,21 +2283,32 @@ def evaluate_maturity(run: dict[str, object]) -> dict[str, object]:
         package_status = "not-packaged"
     technical_status = (
         "pass"
-        if formal_gates_pass
+        if formal_gates_claimed
         else "partial"
         if formal_gate_value in {"partial", "needs-review"}
         else "unverified"
     )
 
     verified_artifacts = _verified_artifact_index(run, blockers)
+    visual_blockers: set[str] = set()
     internal_visual_passes = _valid_internal_visual_passes(
-        run.get("internalVisualPasses"), verified_artifacts, blockers
+        run.get("internalVisualPasses"), verified_artifacts, visual_blockers
     )
+    required_visual_reviews: list[dict[str, object]] = []
+    visual_coverage_pass = False
+    if formal_gates_claimed or run.get("requiredVisualReviews"):
+        required_visual_reviews, visual_coverage_pass = _visual_review_coverage(
+            run.get("requiredVisualReviews"), internal_visual_passes,
+            verified_artifacts, visual_blockers,
+        )
+    visual_coverage_pass = visual_coverage_pass and not visual_blockers
+    blockers.update(visual_blockers)
+    formal_gates_pass = formal_gates_claimed and visual_coverage_pass
     user_acceptance = _valid_user_acceptance(
         run.get("userAcceptance"),
         verified_artifacts,
         internal_visual_passes,
-        formal_gates_pass,
+        formal_gates_claimed,
         blockers,
     )
     visual_status = "pass" if formal_gates_pass else "not-reviewed"
@@ -2325,6 +2388,7 @@ def evaluate_maturity(run: dict[str, object]) -> dict[str, object]:
         "packageStatus": package_status,
         "runtimeStatus": runtime_status,
         "installedStatus": installed_status,
+        "requiredVisualReviews": required_visual_reviews,
         "internalVisualPasses": internal_visual_passes,
         "userAcceptance": user_acceptance,
         "authorities": authorities,
