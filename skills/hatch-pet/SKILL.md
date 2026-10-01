@@ -51,7 +51,7 @@ The command examples use Bash and `jq`. When `jq` is unavailable, use the verifi
 The built-in `$imagegen` path stores generated PNG bytes in the rollout that invokes it, even when it also writes a file under `${CODEX_HOME:-$HOME/.codex}/generated_images`. Deleting files later reduces filesystem use, but it does not shrink an already-written rollout. Keep image generation isolated and bounded:
 
 - For substantial generation runs where delegation is available and useful, isolate one visual job per worker. Small repairs and deterministic checks can stay with the primary agent.
-- Workers must return only `selected_source=...` and `qa_note=...`; they must not include Markdown image previews, base64, or extra visual attachments in their final response.
+- Image-generation workers must return only `selected_source=...` and `qa_note=...`; they must not include Markdown image previews, base64, or extra visual attachments in their final response. Research and review workers follow the return formats in their respective workflow or worker prompt.
 - Keep parent vision input focused on final QA and decision-critical originals. Inspect a source image when conflicting evidence or a repair requires it.
 - Preserve generated originals after copying into `decoded/`. At closeout list exact cleanup candidates; remove an original or directory only within existing explicit authorization for those targets.
 - For storage-sensitive full runs, ask the user whether to use the `$imagegen` CLI fallback when available. That path requires local API credentials and explicit user confirmation, but it can avoid built-in image payloads being embedded in rollout events.

@@ -9,7 +9,7 @@ If frame inspection or final visual QA fails, read `qa/review.json`, regenerate 
 ## Rules
 
 - Keep `$imagegen` as the primary generation layer.
-- For brand/product/company/prospect requests without a concrete avatar description or reference image, run brand discovery before base generation and pass only the compact brief into the run.
+- For brand/product/company/prospect requests without a concrete avatar description or reference image, run brand discovery before base generation using [generation-workflow.md](generation-workflow.md). Preserve the complete brief and source evidence in the run directory; use only the compact handoff fields in image-generation prompts.
 - Use `$imagegen` as the only visual generation layer. Do not invoke image APIs, image CLIs, local raster generators, or one-off generation scripts from this skill.
 - Keep reference images attached/visible for `$imagegen` whenever the chosen path supports references.
 - Attach the row's `references/layout-guides/<state>.png` image to every row-strip job as a layout-only guide, and do not accept outputs that copy guide pixels.
