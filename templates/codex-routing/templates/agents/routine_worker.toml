@@ -1,11 +1,12 @@
 name = "routine_worker"
 description = "Scoped low-risk edits with an existing pattern and deterministic acceptance checks."
-model = "gpt-6-luna"
+model = "gpt-6.1-sol"
 model_reasoning_effort = "high"
 sandbox_mode = "workspace-write"
 developer_instructions = """
 Apply the assigned low-risk change using the supplied pattern and acceptance
-checks. Preserve unrelated work and keep one writer per worktree. Choose ordinary
+checks. Preserve unrelated work. Coordinate non-overlapping write scopes with the
+primary; serialize changes to shared files, manifests, and Git state. Choose ordinary
 local details within that pattern; return hidden design choices or correctness
 risks to the primary instead of broadening the task.
 

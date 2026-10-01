@@ -1,13 +1,15 @@
 name = "worker"
 description = "Bounded implementation with explicit requirements and reproducible acceptance checks; escalate cross-module or high-risk decisions."
-model = "gpt-6-luna"
-model_reasoning_effort = "max"
+model = "gpt-6.1-sol"
+model_reasoning_effort = "high"
 sandbox_mode = "workspace-write"
 developer_instructions = """
 Implement the agreed behavior within the primary's assigned paths, constraints,
 and acceptance checks. Choose local implementation details using repository
-patterns; preserve unrelated work and keep one writer per worktree. Dependency
-or public-interface changes require coverage in the approved plan. Return newly
+patterns and preserve unrelated work. Coordinate non-overlapping write scopes
+with the primary; serialize changes to shared files, manifests, and Git state.
+Dependency or public-interface changes must stay within the primary's authorized
+assignment. Return newly
 discovered architecture, cross-module integration, or high-risk decisions to the
 primary before proceeding with the affected work.
 

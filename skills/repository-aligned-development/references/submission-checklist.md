@@ -1,6 +1,6 @@
 # Submission Checklist
 
-Use this for review, completion, and submission preparation. Submission is a verification step, not the first repository-alignment check.
+Use this for publication, integration handoff, formal branch review, or complex or high-risk delivery. Ordinary local edits use the lightweight path in SKILL.md. Apply only relevant checks; submission verification does not replace earlier repository alignment.
 
 ## Inspect the complete change
 
@@ -36,9 +36,9 @@ Keep the selected submission content minimal and reviewable. Preserve unselected
 
 ## Local closeout
 
-After a mutating task is delivered, inspect task-relevant local-only state that may outlive the submission, including unselected tracked, untracked, or ignored files; generated evidence and prototypes; local branches and worktrees; and bundles or backups.
+When the task leaves extra worktrees, important temporary artifacts, backups, unselected experiments, or unresolved handoff state, inspect those known leftovers. Do not turn this into an inventory of unrelated user files or require it for an ordinary edit with no such state.
 
-Classify each known item as **keep**, **archive**, or **cleanup candidate**. Report the classification inventory, calling out uncertain or user-owned items separately. This classification is read-only: do not delete, move, overwrite, prune, or otherwise change any item without explicit authorization for the exact targets.
+Classify each material leftover as **keep**, **archive**, or **cleanup candidate**. Report the classification inventory, calling out uncertain or user-owned items separately. This classification is read-only: do not delete, move, overwrite, prune, or otherwise change any item without explicit authorization for the exact targets.
 
 ## Authorization gate
 

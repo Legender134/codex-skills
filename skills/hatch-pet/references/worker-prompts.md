@@ -59,10 +59,10 @@ Final visual QA worker responsibilities:
 
 Model choice for workers:
 
-- Use the configured scout for narrow evidence discovery when delegation is useful; use the primary for a short search that has no independent parallel work.
+- Use the primary or configured explorer for research that requires source selection or interpretation. Reserve scout for deterministic read-only checks using supplied commands and rules; a narrow search still requires judgment.
 - Select implementation and visual review roles from the live tool list. Use worker for normal implementation; choose a reviewer with demonstrated visual judgment for semantic QA. Do not select a model solely because it is the cheapest.
 - The primary may perform work directly when delegation adds overhead. Escalate concrete visual ambiguity or conflicting evidence; preserve isolated blind-review inputs.
-- Use min(three, the active child-agent limit, independent ready jobs). Windows cap one means sequential workers. Use a fresh isolated context for each blind verdict without concurrent writers. Follow the live tool lifecycle; do not call a close operation that does not exist.
+- Use min(three, the active child-agent limit, independent ready jobs). When the active child cap is one, run workers sequentially. Use a fresh isolated context for each blind verdict without concurrent writers. Follow the live tool lifecycle; do not call a close operation that does not exist.
 - Once `look-cardinals` passes, start row 9 immediately. Start row 10 only after row 9 has passed deterministic registration, post-registration edge, semantic, and continuity QA; give row 10 the completed row 9 strip as continuity evidence.
 
 Use this base worker prompt:

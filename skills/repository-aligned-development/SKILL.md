@@ -13,7 +13,7 @@ Treat discovery as read-only and every pre-existing change as user-owned.
 
 ## Before mutation
 
-For a mutation, inspect status, applicable instructions, configuration, and analogous code. Record the starting commit (or unborn repository state) plus relevant staged, unstaged, and untracked work separately; a HEAD-to-worktree diff can hide staged changes canceled by unstaged edits. For low-risk work, state `Outcome | Baseline | Exploration boundaries | Verification`.
+For a mutation, inspect status, applicable instructions, configuration, and analogous code. Record the starting commit (or unborn repository state) plus relevant staged, unstaged, and untracked work separately; a HEAD-to-worktree diff can hide staged changes canceled by unstaged edits. Keep baseline notes proportionate to the task; no fixed report format is required.
 
 When the user names a remote repository or version as authoritative, record that source, ref, and resolved commit and inspect its original files. Do not infer the current version from webpage summaries or assume a local checkout matches it. Keep the source baseline distinct from installed copies and local user changes; obtain missing source evidence before replacing their contents.
 
@@ -30,19 +30,15 @@ Read [references/repository-contract.md](references/repository-contract.md) when
 
 ## At delivery
 
-Before reporting a local change, requested commit, or artifact as complete, or publishing or handing it off for integration, read [references/submission-checklist.md](references/submission-checklist.md) and apply the relevant checks below. Publication includes pushing, opening or updating a PR/MR, and requesting remote review. Intermediate authorized WIP commits need the commit-content check above, not final-delivery verification.
+For ordinary local edits or local-only commits, inspect the task diff and relevant staged, unstaged, and untracked state; run proportional checks on the actual delivered content; and report the outcome, verification, and material gaps concisely. If a result depends on excluded user changes or local artifacts, verify a self-contained candidate or report that gap. This lightweight path does not require a full contract, submission checklist, remote queries, or a separate closeout inventory.
 
-1. Identify the candidate and task baseline, plus the integration base, destination remote/branch, and PR/MR target base when applicable. For local-only delivery, mark remote checks inapplicable.
-2. Inspect status, name-status, stat, and full diffs from the task baseline, including staged and unstaged changes separately. For every integration delivery, inspect the actual candidate against the integration base, including any earlier commits it carries; the task baseline alone is insufficient. When publishing to a remote, also verify its state and every outgoing commit, plus the actual PR/MR diff when applicable.
-3. Select the smallest coherent task-complete diff. Exclude material not needed for the requested outcome or repository requirements, including abandoned alternatives and unrelated exploration. Generated outputs, refactors, and reusable components belong in the candidate when required to complete the task.
-4. Preserve unselected work. If unrelated outgoing commits exist, prepare an isolated candidate without rewriting user history; do not publish them merely because they share the branch.
-5. Validate the selected candidate in its final location and state. After migration or regrouping, rerun relevant checks there; results from the original worktree do not establish that the candidate is self-contained.
+For publication, integration handoff, formal branch review, or a complex or high-risk change, read [references/submission-checklist.md](references/submission-checklist.md) and apply its relevant checks. Identify the exact candidate and receiving base; inspect earlier commits it carries; preserve unselected work; and validate the final candidate after migration or regrouping. Publication includes pushing, opening or updating a PR/MR, and requesting remote review. Intermediate authorized WIP commits need the commit-content check above, not final-delivery verification.
 
 Tests establish behavior only. Passing tests or staying within one directory never proves that every changed file belongs in the submission.
 
 ## Local closeout
 
-After a mutating task is delivered, use the local-closeout section of [references/submission-checklist.md](references/submission-checklist.md) to inventory and classify task-relevant local-only state. This is a read-only review, not cleanup; preserve every item until the user authorizes an exact destructive or state-changing action.
+When a task leaves extra worktrees, important temporary artifacts, backups, unselected experiments, or unresolved handoff state, report what remains and its intended disposition. Use the local-closeout section of [references/submission-checklist.md](references/submission-checklist.md) when an inventory is useful. Ordinary edits without such leftovers need no separate closeout exercise. Preserve local state until the user authorizes an exact destructive or state-changing action.
 
 ## Authorization gates
 

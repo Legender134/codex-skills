@@ -4,19 +4,19 @@ Read this reference only for its current stage. Apply the shared runtime, author
 
 ## Brand Discovery
 
-If the user provides only a brand, company, product, or prospect name, perform narrow brand discovery before preparing the pet run. The primary can do this directly; use a scout only when an independent bounded search usefully overlaps other work. The researcher must use web search and prefer official sources such as the brand site, product pages, docs, about pages, press pages, or brand pages. Use reputable secondary sources only when official pages are too thin. Keep the search narrow: enough to extract visual and personality cues, not a market-research brief.
+If the user provides only a brand, company, product, or prospect name, perform narrow brand discovery before preparing the pet run. The primary can do this directly; use the configured explorer when independent research usefully overlaps other work. Source selection and visual/personality interpretation require research judgment; do not assign them to the deterministic scout. The researcher must use web search and prefer official sources such as the brand site, product pages, docs, about pages, press pages, or brand pages. Use reputable secondary sources only when official pages are too thin. Keep the search narrow: enough to extract visual and personality cues, not a market-research brief.
 
 Skip discovery when the user already provides a concrete mascot/avatar description or reference images, unless the user explicitly asks for brand research.
 
 Discovery worker responsibilities:
 
 - search the web for 2-4 relevant sources, preferring official pages
-- write an adaptive markdown brief rather than a rigid field dump
+- return the complete adaptive Markdown brief in the response rather than a rigid field dump or only a summary
 - cover identity/category, audience/use context, visual system, personality/tone, product/domain motifs, mascot translation cues, avoidances, and evidence/confidence
 - mark mascot guidance that is inferred from sources as inference
 - avoid copying logos, readable marks, UI screenshots, slogans, or text
 - end with a compact `Generation handoff` section containing only `brand_name`, `brand_brief`, `avatar_seed`, `avoid`, and `brand_sources`
-- do not generate images, prepare run folders, or edit unrelated files
+- stay read-only: do not generate images, create files or run folders, or edit existing files
 
 Use this discovery worker prompt:
 
@@ -25,9 +25,9 @@ Research a brand for hatch-pet mascot creation.
 
 Brand/product/prospect: <brand name>
 User context: <short user request>
-Output file: <absolute path to brand-discovery.md>
+Output: complete Markdown brief in your response; the parent will save it.
 
-Use web search. Prefer official brand, product, docs, about, press, or brand pages. Use reputable secondary sources only if official sources are too thin. Write an adaptive markdown brief to the output file. Headings may flex by brand, but the brief must cover:
+Use web search. Prefer official brand, product, docs, about, press, or brand pages. Use reputable secondary sources only if official sources are too thin. Stay read-only and return an adaptive Markdown brief. Do not create or edit files. Headings may flex by brand, but the brief must cover:
 - identity/category: canonical name, product type, what it does
 - audience/use context: who it serves and where it appears
 - visual system: palette, shapes, line quality, materials, typography feel, iconography, patterns
@@ -46,16 +46,11 @@ End the brief with a `Generation handoff` section containing exactly:
 - avoid=<short comma-separated list>
 - brand_sources=<comma-separated source URLs>
 
-Return exactly:
-brand_discovery_file=<absolute output file path>
-brand_name=<canonical brand/product name>
-brand_brief=<same compact sentence from Generation handoff>
-avatar_seed=<same short seed from Generation handoff>
-avoid=<same short avoid list from Generation handoff>
-brand_sources=<same comma-separated URLs from Generation handoff>
+Return the complete brief, including its source evidence and final Generation handoff section.
+Do not return only compact fields or a file path; the parent needs the full text to save and review.
 ```
 
-The parent should save the markdown brief before preparing the run, then pass it to `prepare_pet_run.py` as `--brand-discovery-file` together with `--brand-name`, `--brand-brief`, repeated `--brand-source`, and a concise `--pet-notes` value based on `avatar_seed` when the user did not provide a better avatar description. Keep the full brief for review; only the compact handoff fields should shape prompts. If web search is unavailable and the user gave only a bare brand name, ask for brand cues before generating.
+The parent saves the complete returned brief to its chosen brand-discovery.md path and verifies that file exists before preparing the run, then passes that saved path to `prepare_pet_run.py` as `--brand-discovery-file` together with `--brand-name`, `--brand-brief`, repeated `--brand-source`, and a concise `--pet-notes` value based on `avatar_seed` when the user did not provide a better avatar description. Keep the full brief for review; only the compact handoff fields should shape prompts. If web search is unavailable and the user gave only a bare brand name, ask for brand cues before generating.
 
 ## Generation Contract
 

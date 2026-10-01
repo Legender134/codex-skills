@@ -10,7 +10,7 @@ from codex_routing.toml_merge import managed_config_values, merge_global_config
 EXISTING = '''
 # personal comment
 model = "gpt-6-sol"
-model_reasoning_effort = "xhigh"
+model_reasoning_effort = "high"
 
 [features]
 multi_agent = true
@@ -29,12 +29,12 @@ class TomlMergeTests(unittest.TestCase):
         self.assertEqual(
             managed_config_values(GLOBAL_POLICIES["windows"]),
             {
-                "model": "gpt-6-sol",
-                "model_reasoning_effort": "high",
+                "model": "gpt-6.1-sol",
+                "model_reasoning_effort": "xhigh",
                 "agents": {
                     "enabled": True,
                     "max_concurrent_threads_per_session": 2,
-                    "default_subagent_model": "gpt-6-sol",
+                    "default_subagent_model": "gpt-6.1-sol",
                     "default_subagent_reasoning_effort": "high",
                     "interrupt_message": True,
                 },
@@ -45,12 +45,12 @@ class TomlMergeTests(unittest.TestCase):
         merged = merge_global_config(EXISTING, GLOBAL_POLICIES["windows"])
         payload = tomllib.loads(merged)
 
-        self.assertEqual(payload["model"], "gpt-6-sol")
-        self.assertEqual(payload["model_reasoning_effort"], "high")
+        self.assertEqual(payload["model"], "gpt-6.1-sol")
+        self.assertEqual(payload["model_reasoning_effort"], "xhigh")
         self.assertTrue(payload["agents"]["enabled"])
         self.assertEqual(payload["agents"]["max_concurrent_threads_per_session"], 2)
         self.assertEqual(
-            payload["agents"]["default_subagent_model"], "gpt-6-sol"
+            payload["agents"]["default_subagent_model"], "gpt-6.1-sol"
         )
         self.assertEqual(
             payload["agents"]["default_subagent_reasoning_effort"], "high"
@@ -72,12 +72,12 @@ class TomlMergeTests(unittest.TestCase):
         self.assertEqual(
             tomllib.loads(merged),
             {
-                "model": "gpt-6-sol",
-                "model_reasoning_effort": "high",
+                "model": "gpt-6.1-sol",
+                "model_reasoning_effort": "xhigh",
                 "agents": {
                     "enabled": True,
                     "max_concurrent_threads_per_session": 2,
-                    "default_subagent_model": "gpt-6-sol",
+                    "default_subagent_model": "gpt-6.1-sol",
                     "default_subagent_reasoning_effort": "high",
                     "interrupt_message": True,
                 },
@@ -92,9 +92,9 @@ class TomlMergeTests(unittest.TestCase):
 
         merged = merge_global_config(existing, GLOBAL_POLICIES["windows"])
 
-        self.assertLess(merged.index('model = "gpt-6-sol"'), merged.index("[features]"))
+        self.assertLess(merged.index('model = "gpt-6.1-sol"'), merged.index("[features]"))
         self.assertLess(
-            merged.index('model_reasoning_effort = "high"'), merged.index("[features]")
+            merged.index('model_reasoning_effort = "xhigh"'), merged.index("[features]")
         )
         self.assertTrue(merged.rstrip().endswith("interrupt_message = true"))
         self.assertEqual(tomllib.loads(merged)["custom"], "keep")
@@ -113,7 +113,7 @@ class TomlMergeTests(unittest.TestCase):
         merged = merge_global_config(existing, GLOBAL_POLICIES["wsl"])
 
         self.assertNotIn("\n", merged.replace("\r\n", ""))
-        self.assertIn('model = "gpt-6-sol" # keep\r\n', merged)
+        self.assertIn('model = "gpt-6.1-sol" # keep\r\n', merged)
         self.assertIn('interrupt_message = true # keep\r\n', merged)
         self.assertIn('custom_future_key = "preserve-me"\r\n', merged)
 
@@ -128,8 +128,8 @@ class TomlMergeTests(unittest.TestCase):
 
         merged = merge_global_config(existing, GLOBAL_POLICIES["windows"])
 
-        self.assertIn('model = "gpt-6-sol" # primary comment\n', merged)
-        self.assertIn('model_reasoning_effort = "high" # effort comment\n', merged)
+        self.assertIn('model = "gpt-6.1-sol" # primary comment\n', merged)
+        self.assertIn('model_reasoning_effort = "xhigh" # effort comment\n', merged)
         self.assertIn('max_concurrent_threads_per_session = 2 # cap comment\n', merged)
 
     def test_merge_preserves_unrelated_nested_agents_table(self) -> None:
@@ -178,7 +178,7 @@ class TomlMergeTests(unittest.TestCase):
                         expected = before["agents"] if table else before
                         self.assertEqual(container["notes"], expected["notes"])
                         self.assertIn(notes, merged)
-                        self.assertEqual(parsed["model"], "gpt-6-sol")
+                        self.assertEqual(parsed["model"], "gpt-6.1-sol")
                         self.assertEqual(parsed["agents"]["max_concurrent_threads_per_session"], 2)
                         self.assertEqual(merge_global_config(merged, GLOBAL_POLICIES["wsl"]), merged)
 
@@ -202,7 +202,7 @@ class TomlMergeTests(unittest.TestCase):
                 after = tomllib.loads(merged)
                 self.assertEqual(after["notes"], before["notes"])
                 self.assertIn(notes, merged)
-                self.assertEqual(after["model"], "gpt-6-sol")
+                self.assertEqual(after["model"], "gpt-6.1-sol")
                 self.assertIs(after["agents"]["enabled"], True)
 
     def test_invalid_toml_is_rejected(self) -> None:
@@ -228,7 +228,7 @@ class TomlMergeTests(unittest.TestCase):
                         self.assertEqual((after["agents"] if table else after)["notes"],
                                          (before["agents"] if table else before)["notes"])
                         self.assertIn(note, merged)
-                        self.assertEqual(after["model"], "gpt-6-sol")
+                        self.assertEqual(after["model"], "gpt-6.1-sol")
                         self.assertEqual(merge_global_config(merged, GLOBAL_POLICIES["wsl"]), merged)
 
     def test_unmanaged_nan_values_survive_without_masking_other_changes(self) -> None:

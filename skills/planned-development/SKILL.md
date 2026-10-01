@@ -21,7 +21,7 @@ Proceed with authorized reversible implementation and verification. Pause only f
 
 ## Optional delegation
 
-Keep small tasks with the primary. Delegate a bounded independent subtask only when it usefully overlaps other work and the live tool contract allows it. Use current configured roles, respect the active child limit, and keep one writer per worktree, including the primary. Pass only the goal, paths, evidence, constraints, and acceptance criteria needed by that worker. Do not hard-code model names or require every role to run as a pipeline.
+Keep small tasks with the primary. Delegate a bounded independent subtask only when it usefully overlaps other work and the live tool contract allows it. Use current configured roles, respect the active child limit, and assign non-overlapping write scopes. Coordinate or serialize shared files, manifests, and Git state; the primary owns integration. Use separate worktrees when isolation helps. Pass only the goal, paths, evidence, constraints, and acceptance criteria needed by that worker. Do not hard-code model names or require every role to run as a pipeline.
 
 ## Review and finish
 

@@ -10,7 +10,7 @@ This directory is an overlay, not a standalone project. Copy its contents into t
 
 ## Model routing
 
-The overlay inherits model, effort, role and concurrency settings from user-global Codex configuration. It installs no `.codex/config.toml` or `.codex/agents/` overrides. Keep one writer and follow the global child cap. Preserve provider, login, billing and permission settings.
+The overlay inherits model, effort, role and concurrency settings from user-global Codex configuration. It installs no `.codex/config.toml` or `.codex/agents/` overrides. Follow the global child cap and assign non-overlapping write scopes; coordinate or serialize shared files, run manifests and Git state. Preserve provider, login, billing and permission settings.
 
 Three version-neutral business briefs live under `docs/agent-briefs/`:
 

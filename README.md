@@ -15,10 +15,10 @@ Portable Codex skills and independently maintained Windows/WSL routing configura
 
 [Setup guide](templates/codex-routing/SETUP.md) · [Installer and validation](templates/codex-routing/README.md)
 
-The configuration uses GPT-6 Sol High for the primary and unspecified children.
-Named routes use Luna Low for read-only scout supervision, Luna High for exploration
-and routine edits, Luna Max for bounded implementation, Sol High for ordinary review,
-and Astra High for critical review. The child cap is two per primary session.
+The routing package maintains the [current model, effort and concurrency settings](templates/codex-routing/README.md#routing-policy).
+Sol handles exploration, implementation and ordinary review; Astra handles substantial
+correctness risks. Luna is reserved for deterministic read-only checks and factual
+progress reports using supplied commands and rules.
 Routing is global-only; this package provides no project installation commands.
 Preserve existing provider/login, project domain rules and unrelated
 configuration. See the routing package README for safe installation and rollback.
@@ -57,7 +57,7 @@ For `codex-sync-skills`, install the authoritative copy on Windows first. Run it
 
 ## Global instructions source
 
-The [routing package](templates/codex-routing/README.md) maintains the Windows and WSL global instructions, including repository development and submission rules. Install the template for the owning environment through that package; do not append a second copy of repository rules. Existing unrelated global instructions remain preserved by its managed-block merge.
+The [routing package](templates/codex-routing/README.md) maintains stable Windows and WSL global preferences and core boundaries. Detailed development and submission procedures live in the repository development Skill. Install the template for the owning environment through that package; do not append a second copy of repository rules. Existing unrelated global instructions remain preserved by its managed-block merge.
 
 The Skill's `skills/repository-aligned-development/agents/openai.yaml` contains UI metadata and its default prompt. It is installed with the Skill and is not a global agent configuration file.
 

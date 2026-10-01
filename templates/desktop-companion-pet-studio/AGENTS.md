@@ -9,8 +9,9 @@ Inherit model, effort, role and concurrency settings from user-global Codex
 configuration; do not install project routing overrides. Record actual model/effort
 only when exposed by the host. Preserve login, provider, billing and permissions.
 Use the business briefs in docs/agent-briefs/ as task context for suitable global
-roles, not as installed agent definitions. Follow the global child cap and keep one
-writer. The primary owns integration and final acceptance. Check live availability
+roles, not as installed agent definitions. Follow the global child cap and assign
+non-overlapping write scopes. Coordinate or serialize shared files, run manifests
+and Git state. The primary owns integration and final acceptance. Check live availability
 and permissions; a brief's sandbox preference does not prove effective isolation.
 
 Use built-in image generation by default and read the skill's execution-and-models

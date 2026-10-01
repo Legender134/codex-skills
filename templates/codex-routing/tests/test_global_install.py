@@ -161,8 +161,8 @@ class GlobalInstallTests(unittest.TestCase):
             plan = plan_global_install(home, "windows", SOURCE_ROOT)
             config = tomllib.loads(plan.config_after.decode("utf-8"))
 
-            self.assertEqual(config["model"], "gpt-6-sol")
-            self.assertEqual(config["model_reasoning_effort"], "high")
+            self.assertEqual(config["model"], "gpt-6.1-sol")
+            self.assertEqual(config["model_reasoning_effort"], "xhigh")
             self.assertEqual(config["agents"]["max_concurrent_threads_per_session"], 2)
             self.assertEqual(config["mcp_servers"]["keep"]["command"], "keep")
             self.assertFalse(plan.applied)
@@ -321,7 +321,7 @@ class GlobalInstallTests(unittest.TestCase):
 
         self.assertEqual(roots, (Path("/mnt/c"),))
 
-    def test_wsl_plan_has_sol_high_luna_max_and_exact_role_templates(
+    def test_wsl_plan_has_sol_primary_and_workers_with_exact_role_templates(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as raw:
@@ -335,11 +335,11 @@ class GlobalInstallTests(unittest.TestCase):
                 if update.path.parent == home / "agents"
             }
 
-            self.assertEqual(config["model"], "gpt-6-sol")
-            self.assertEqual(config["model_reasoning_effort"], "high")
+            self.assertEqual(config["model"], "gpt-6.1-sol")
+            self.assertEqual(config["model_reasoning_effort"], "xhigh")
             self.assertEqual(config["agents"]["max_concurrent_threads_per_session"], 2)
             self.assertEqual(
-                config["agents"]["default_subagent_model"], "gpt-6-sol"
+                config["agents"]["default_subagent_model"], "gpt-6.1-sol"
             )
             self.assertEqual(
                 config["agents"]["default_subagent_reasoning_effort"], "high"
@@ -357,11 +357,11 @@ class GlobalInstallTests(unittest.TestCase):
             worker = tomllib.loads(role_updates["worker.toml"].decode("utf-8"))
             self.assertEqual(
                 (scout["model"], scout["model_reasoning_effort"]),
-                ("gpt-6-luna", "low"),
+                ("gpt-6-luna", "high"),
             )
             self.assertEqual(
                 (worker["model"], worker["model_reasoning_effort"]),
-                ("gpt-6-luna", "max"),
+                ("gpt-6.1-sol", "high"),
             )
 
     def test_global_agents_managed_block_preserves_foreign_text_and_crlf(self) -> None:
@@ -560,7 +560,7 @@ class GlobalInstallTests(unittest.TestCase):
             install_global(home, "wsl", SOURCE_ROOT, apply=True)
             config = home / "config.toml"
             foreign = config.read_bytes().replace(
-                b'model = "gpt-6-sol"', b'model = "foreign-model"'
+                b'model = "gpt-6.1-sol"', b'model = "foreign-model"'
             )
 
             def mutate_before_transaction(*args, **kwargs):
@@ -634,11 +634,11 @@ class GlobalInstallTests(unittest.TestCase):
             self.assertEqual(
                 report.owned_values,
                 (
-                    ("model", "gpt-6-sol"),
-                    ("model_reasoning_effort", "high"),
+                    ("model", "gpt-6.1-sol"),
+                    ("model_reasoning_effort", "xhigh"),
                     ("agents.enabled", True),
                     ("agents.max_concurrent_threads_per_session", 2),
-                    ("agents.default_subagent_model", "gpt-6-sol"),
+                    ("agents.default_subagent_model", "gpt-6.1-sol"),
                     ("agents.default_subagent_reasoning_effort", "high"),
                     ("agents.interrupt_message", True),
                 ),
@@ -894,7 +894,7 @@ class GlobalInstallTests(unittest.TestCase):
             config_path = home / "config.toml"
             config_path.write_text(
                 config_path.read_text(encoding="utf-8").replace(
-                    'model = "gpt-6-sol"',
+                    'model = "gpt-6.1-sol"',
                     'model = "secret-token-value"',
                 ),
                 encoding="utf-8",

@@ -8,16 +8,18 @@ This package no longer creates project model, role or concurrency overrides.
 
 | Role | Model | Effort | Access default |
 | --- | --- | --- | --- |
-| Primary / unspecified child | gpt-6-sol | high | Inherited |
-| scout | gpt-6-luna | low | Read-only |
-| explorer | gpt-6-luna | high | Read-only |
-| routine_worker | gpt-6-luna | high | Workspace-write |
-| worker | gpt-6-luna | max | Workspace-write |
-| reviewer | gpt-6-sol | high | Read-only |
+| Primary (Windows / WSL) | gpt-6.1-sol | xhigh | Inherited |
+| Unspecified child | gpt-6.1-sol | high | Inherited |
+| scout | gpt-6-luna | high | Read-only |
+| explorer | gpt-6.1-sol | high | Read-only |
+| routine_worker | gpt-6.1-sol | high | Workspace-write |
+| worker | gpt-6.1-sol | high | Workspace-write |
+| reviewer | gpt-6.1-sol | high | Read-only |
 | critical_reviewer | gpt-6-astra | high | Read-only |
 
 Two concurrent children per primary session, excluding the primary; this is a
-ceiling, not a fixed pipeline or a machine-wide pool. Keep one writer per worktree.
+ceiling, not a fixed pipeline or a machine-wide pool. Coordinate edits to avoid
+conflicting writes; choose the working arrangement to fit the task.
 Use only supported GPT-6 routes; never fall back to GPT-5.6. Model availability and
 actual effort are verified at runtime, not inferred from a configuration file.
 Do not switch provider/login/billing or enable Fast to work around usage limits.
@@ -28,7 +30,8 @@ configuration or global AGENTS blocks. Necessary project-specific instructions,
 including those for non-code work, remain local to that project. Delegate by risk
 and complexity rather than file count, and reuse existing in-scope authorization.
 Keep these installation, inheritance and migration rules in this documentation;
-the always-loaded global AGENTS files contain operational guidance. When changing
+the always-loaded global AGENTS files contain only stable preferences and core
+boundaries. When changing
 configuration, check effective overrides and newly loaded settings; editing a
 file alone does not prove an existing session uses it.
 
@@ -56,6 +59,32 @@ polling while scout coverage is healthy.
 
 Before publication, review both the task-baseline diff and everything the target
 remote would receive, including earlier unpushed commits and the actual PR/MR diff.
+
+Both native environments use GPT-6.1 Sol at `xhigh` for the primary. Exploration,
+implementation, routine edits, and ordinary review use GPT-6.1 Sol at `high`.
+Keep Astra for `critical_reviewer`. Luna is reserved for deterministic read-only
+lookups and progress reporting through `scout`, using supplied commands, fields,
+and thresholds. Any need for interpretation, research synthesis, diagnosis,
+recommendations, or quality judgment returns to the primary or a Sol role.
+Verify model availability in each native client before
+installation; the [official model guidance](https://learn.chatgpt.com/docs/models)
+describes the rollout.
+
+## Instruction scope
+
+Global AGENTS files leave planning, tool selection, delegation, and verification
+depth to the task. They retain environment ownership, configured model preferences,
+Luna's narrow role, preservation of user work, authorization boundaries, and concise
+evidence-based reporting. They do not mandate a dispatch report format, a default
+history-fork mode, one writer for an entire worktree, or a cleanup inventory for
+every edit.
+
+Detailed repository submission and closeout procedures belong to the
+[repository development skill](../../skills/repository-aligned-development/SKILL.md),
+while monitoring procedures belong to the scout role and the relevant task.
+Project-specific checks remain in each project. These procedures are available
+when relevant without repeating them in every global instruction load, following
+the [official customization guidance](https://learn.chatgpt.com/docs/customization/overview).
 
 ## Prepare the environment
 
